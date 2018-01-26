@@ -1,0 +1,33 @@
+url:
+title: Fung's wiki
+keywords:
+description: ""
+author: Fung Kong
+theme: yasimple_x2
+
+root: /
+
+category:
+  - name: linux
+    label: linux
+
+  - name: oracle
+    lable: oracle
+
+  - name: db2
+    lable: db2
+
+  - name: misc
+    lable: misc
+
+##### Parser #####
+markdown:
+  - fenced_code
+  - extra
+  - codehilite(css_class=hlcode, linenums=False)
+  - toc(title=Table of Contents)
+
+deploy:
+  - type: git
+  - remote: 'origin'
+  - branch: 'gh-pages'
