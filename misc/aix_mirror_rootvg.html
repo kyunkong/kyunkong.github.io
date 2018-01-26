@@ -1,0 +1,136 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>Mirror rootvg in AIX - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#misc">misc</a>
+    &nbsp;&#187;&nbsp;Mirror rootvg in AIX
+    <span class="updated">Last Update: &nbsp;
+    2018-01-16 17:30:44
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#1rootvg">1、查看当前rootvg是否存在镜像</a></li>
+<li><a href="#2pv">2、检查镜像设备，并设置为PV</a></li>
+<li><a href="#3">3、确认两块盘大小是否一致</a></li>
+<li><a href="#4hdisk1rootvg">4、将hdisk1加入rootvg</a></li>
+<li><a href="#5">5、开始镜像</a></li>
+<li><a href="#6boot">6、设置boot信息</a></li>
+<li><a href="#7">7、更改启动顺序</a></li>
+<li><a href="#8">8、查看引导顺序</a></li>
+<li><a href="#_1">删除镜像步骤：</a></li>
+</ul>
+</div>
+<h2 id="1rootvg">1、查看当前rootvg是否存在镜像</h2>
+<div class="hlcode"><pre><span class="cp"># lsvg -l rootvg</span>
+<span class="nl">rootvg:</span>
+<span class="n">LV</span> <span class="n">NAME</span>             <span class="n">TYPE</span>       <span class="n">LPs</span>     <span class="n">PPs</span>     <span class="n">PVs</span>  <span class="n">LV</span> <span class="n">STATE</span>      <span class="n">MOUNT</span> <span class="n">POINT</span>
+<span class="n">hd5</span>                 <span class="n">boot</span>       <span class="mi">1</span>       <span class="mi">1</span>       <span class="mi">1</span>    <span class="n">closed</span><span class="o">/</span><span class="n">syncd</span>  <span class="n">N</span><span class="o">/</span><span class="n">A</span>
+<span class="n">hd6</span>                 <span class="n">paging</span>     <span class="mi">2</span>       <span class="mi">2</span>       <span class="mi">1</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="n">N</span><span class="o">/</span><span class="n">A</span>
+<span class="n">hd8</span>                 <span class="n">jfs2log</span>    <span class="mi">1</span>       <span class="mi">1</span>       <span class="mi">1</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="n">N</span><span class="o">/</span><span class="n">A</span>
+<span class="n">hd4</span>                 <span class="n">jfs2</span>       <span class="mi">2</span>       <span class="mi">2</span>       <span class="mi">1</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span>
+<span class="n">hd2</span>                 <span class="n">jfs2</span>       <span class="mi">10</span>      <span class="mi">10</span>      <span class="mi">1</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">usr</span>
+<span class="n">hd9var</span>              <span class="n">jfs2</span>       <span class="mi">2</span>       <span class="mi">2</span>       <span class="mi">1</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">var</span>
+<span class="n">hd3</span>                 <span class="n">jfs2</span>       <span class="mi">1</span>       <span class="mi">1</span>       <span class="mi">1</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">tmp</span>
+<span class="n">hd1</span>                 <span class="n">jfs2</span>       <span class="mi">1</span>       <span class="mi">1</span>       <span class="mi">1</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">home</span>
+<span class="n">hd10opt</span>             <span class="n">jfs2</span>       <span class="mi">2</span>       <span class="mi">2</span>       <span class="mi">1</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">opt</span>
+<span class="n">hd11admin</span>           <span class="n">jfs2</span>       <span class="mi">1</span>       <span class="mi">1</span>       <span class="mi">1</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">admin</span>
+<span class="n">livedump</span>            <span class="n">jfs2</span>       <span class="mi">1</span>       <span class="mi">1</span>       <span class="mi">1</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">adm</span><span class="o">/</span><span class="n">ras</span><span class="o">/</span><span class="n">livedump</span>
+<span class="cp"># lsvg -p rootvg</span>
+<span class="nl">rootvg:</span>
+<span class="n">PV_NAME</span>           <span class="n">PV</span> <span class="n">STATE</span>          <span class="n">TOTAL</span> <span class="n">PPs</span>   <span class="n">FREE</span> <span class="n">PPs</span>    <span class="n">FREE</span> <span class="n">DISTRIBUTION</span>
+<span class="n">hdisk0</span>            <span class="n">active</span>            <span class="mi">546</span>         <span class="mi">522</span>         <span class="mf">109..106</span><span class="p">.</span><span class="mf">.89</span><span class="p">.</span><span class="mf">.109</span><span class="p">.</span><span class="mf">.109</span>
+</pre></div>
+
+
+<p>如果PPs是LPs的两倍，则表示存在镜像。</p>
+<h2 id="2pv">2、检查镜像设备，并设置为PV</h2>
+<div class="hlcode"><pre><span class="cp"># lsdev -Ccdisk</span>
+<span class="n">hdisk0</span> <span class="n">Available</span> <span class="mo">00</span><span class="o">-</span><span class="mi">08</span><span class="o">-</span><span class="mo">00</span> <span class="n">SAS</span> <span class="n">Disk</span> <span class="n">Drive</span>
+<span class="n">hdisk1</span> <span class="n">Available</span> <span class="mo">00</span><span class="o">-</span><span class="mi">08</span><span class="o">-</span><span class="mo">00</span> <span class="n">SAS</span> <span class="n">Disk</span> <span class="n">Drive</span>
+<span class="cp"># chdev -l hdisk1 -a pv=yes</span>
+<span class="n">hdisk1</span> <span class="n">changed</span>
+</pre></div>
+
+
+<h2 id="3">3、确认两块盘大小是否一致</h2>
+<div class="hlcode"><pre><span class="c"># lsattr -El hdisk0</span>
+<span class="c"># lsattr -El hdisk1</span>
+</pre></div>
+
+
+<h2 id="4hdisk1rootvg">4、将hdisk1加入rootvg</h2>
+<div class="hlcode"><pre><span class="c"># extendvg -f rootvg hdisk1</span>
+</pre></div>
+
+
+<h2 id="5">5、开始镜像</h2>
+<div class="hlcode"><pre><span class="c"># mirrorvg rootvg</span>
+</pre></div>
+
+
+<h2 id="6boot">6、设置boot信息</h2>
+<div class="hlcode"><pre><span class="n">bosboot</span> <span class="o">-</span><span class="n">a</span> <span class="o">-</span><span class="n">d</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">hdisk1</span>
+</pre></div>
+
+
+<h2 id="7">7、更改启动顺序</h2>
+<div class="hlcode"><pre><span class="n">bootlist</span> <span class="o">-</span><span class="n">m</span> <span class="n">normal</span> <span class="n">hdisk0</span> <span class="n">hdisk1</span> <span class="n">cd0</span>
+</pre></div>
+
+
+<h2 id="8">8、查看引导顺序</h2>
+<div class="hlcode"><pre><span class="n">bootlist</span> <span class="o">-</span><span class="n">m</span> <span class="n">normal</span> <span class="o">-</span><span class="n">o</span>
+</pre></div>
+
+
+<h2 id="_1">删除镜像步骤：</h2>
+<div class="hlcode"><pre><span class="mi">1</span><span class="err">、</span><span class="n">unmirrorvg</span> <span class="n">rootvg</span> <span class="n">hdisk1</span>
+<span class="mi">2</span><span class="err">、</span><span class="n">chpv</span> <span class="o">-</span><span class="n">c</span> <span class="n">hdisk1</span>
+<span class="mi">3</span><span class="err">、</span><span class="n">reducevg</span> <span class="n">rootvg</span> <span class="n">hdisk1</span>
+<span class="mi">4</span><span class="err">、</span><span class="n">bootlist</span> <span class="o">-</span><span class="n">m</span> <span class="n">normal</span> <span class="n">hdisk0</span> 
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

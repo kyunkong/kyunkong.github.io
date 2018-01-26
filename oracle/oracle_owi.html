@@ -1,0 +1,415 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>Oracle Wait Interface - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#oracle">oracle</a>
+    &nbsp;&#187;&nbsp;Oracle Wait Interface
+    <span class="updated">Last Update: &nbsp;
+    2018-01-15 11:38:50
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#owi-tools">OWI tools</a><ul>
+<li><a href="#1-owi-dynamic-performance-views-overview">1. OWI dynamic performance views overview</a></li>
+<li><a href="#2-extended-sql-trace">2. Extended SQL trace</a><ul>
+<li><a href="#21-oradebug-dump">2.1 oradebug dump</a></li>
+<li><a href="#22-oradebug-control-process">2.2 oradebug control process</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#3-latch">3. Latch</a><ul>
+<li><a href="#31-latch">3.1 有关latch的重要动态性能视图</a></li>
+<li><a href="#32-latch">3.2 Latch相关的等待事件</a></li>
+<li><a href="#34-lock">3.4 Lock相关</a><ul>
+<li><a href="#341-enqueue">3.4.1 Enqueue相同关视图</a></li>
+<li><a href="#342">3.4.2 普通锁相关的等待事件</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#4-oracleowi">4. Oracle内部结构与OWI</a><ul>
+<li><a href="#41-shared-pool">4.1 Shared Pool相关</a><ul>
+<li><a href="#411-sqlshared-pool">4.1.1 SQL的执行的顺序跟shared pool的关系</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#5">5. 事务相关的等待事件</a></li>
+<li><a href="#6">6. 个别等待事件</a><ul>
+<li><a href="#61-cache-buffers-chains">6.1 cache buffers chains</a></li>
+<li><a href="#62-cache-buffers-lru-chain">6.2 cache buffers lru chain</a></li>
+<li><a href="#63-buffer-busy-waitsread-by-other-sessiongc-buffer-busy">6.3 buffer busy waits/read by other session/gc buffer busy</a></li>
+</ul>
+</li>
+<li><a href="#scenario">Scenario</a></li>
+<li><a href="#analysis">Analysis</a><ul>
+<li><a href="#1-awr">1. AWR</a></li>
+<li><a href="#2-alert-log-and-trace-file">2. Alert log and trace file</a></li>
+<li><a href="#3-parameters">3. Parameters</a></li>
+<li><a href="#4-conclusion">4. Conclusion</a></li>
+</ul>
+</li>
+<li><a href="#recommendation">Recommendation</a></li>
+<li><a href="#explanation-of-log-file-sync">Explanation of log file sync</a></li>
+</ul>
+</div>
+<h1 id="owi-tools">OWI tools</h1>
+<ol>
+<li>OWI dynamic performance views</li>
+<li>Other critical dynamic performance views</li>
+<li>Extended SQL trace(10046 event)</li>
+<li>oradebug &amp; dump</li>
+<li>AWR</li>
+</ol>
+<h2 id="1-owi-dynamic-performance-views-overview">1. OWI dynamic performance views overview</h2>
+<div class="hlcode"><pre>V<span class="nv">$EVENT_NAME</span>    : 提供所有OWI的信息，包括名字，P1，P2，P3等
+V<span class="nv">$SYSTEM_EVENT</span>  : 实例启动以来所有seesion发生的OWI的累计信息
+V<span class="nv">$SESSION_EVENT</span> : 当前已连接session的等待事件累计
+v<span class="nv">$session_wait</span>  : 提供各session当前正在等待事件的信息
+V<span class="nv">$SESSION_WAIT_HISTORY</span>
+V<span class="nv">$SYSTEM_WAIT_CLASS</span>
+V<span class="nv">$SESSION_WAIT_CLASS</span>
+V<span class="nv">$EVENT_HISTOGRAM</span>
+
+V<span class="nv">$SESSION</span>                                                 : session information
+V<span class="nv">$ACTIVE_SESSION_HISTORY</span>                                  : session <span class="nb">history </span>information
+V<span class="nv">$PROCESS</span>                                                 : process information
+V<span class="nv">$TRANSACTION</span>                                             : transaction infor
+V<span class="nv">$LATCH</span>, V<span class="nv">$LATCH_PARENT</span>, V<span class="nv">$LATCH_CHILDREN</span>, V<span class="nv">$LATCH_HOLDER</span> : latch infor
+V<span class="nv">$LOCK</span>, V<span class="nv">$LOCKED_OBJECT</span>, V<span class="nv">$ENQUEUE_LOCK</span>                   : lock infor
+V<span class="nv">$SQL</span>, V<span class="nv">$SQLTEXT</span>                                          : SQL infor
+V<span class="nv">$LIBRARYCACHE</span>, X<span class="nv">$KGLLK</span>, X<span class="nv">$KGLPN</span>                          : library cache infor
+V<span class="nv">$ROWCACHE</span>, V<span class="nv">$ROWCACHE_PARENT</span>                             : row cache infor
+V<span class="nv">$SGASTAT</span>                                                 : SGA infor
+V<span class="nv">$SEGMENT_STATISTICS</span>                                      : segment level statistics infor
+V<span class="nv">$SESSION_TIME_MODEL</span>, V<span class="nv">$SYS_TIME_MODEL</span>                    : <span class="nb">time </span>model infor
+X<span class="nv">$BH</span>, V<span class="nv">$BH</span>                                                : data buffer cache infor
+</pre></div>
+
+
+<h2 id="2-extended-sql-trace">2. Extended SQL trace</h2>
+<ul>
+<li>10046 event</li>
+</ul>
+<div class="hlcode"><pre><span class="k">alter</span> <span class="k">session</span> <span class="k">set</span> <span class="n">events</span> <span class="s1">&#39;10046 trace name context forever, level 12&#39;</span>
+<span class="k">alter</span> <span class="k">session</span> <span class="k">set</span> <span class="n">events</span> <span class="s1">&#39;10046 trace name context forever off&#39;</span>
+</pre></div>
+
+
+<ul>
+<li>oradebug</li>
+</ul>
+<div class="hlcode"><pre><span class="n">oradebug</span> <span class="n">setospid</span> <span class="mi">1235</span>
+<span class="n">oradebug</span> <span class="n">unlimit</span>
+<span class="n">oradebug</span> <span class="n">event</span> <span class="mi">10046</span> <span class="n">trace</span> <span class="n">name</span> <span class="n">context</span> <span class="n">forever</span><span class="p">,</span> <span class="k">level</span> <span class="mi">12</span>
+<span class="n">oradebug</span> <span class="n">event</span> <span class="mi">10046</span> <span class="n">trace</span> <span class="n">name</span> <span class="n">context</span> <span class="n">forever</span> <span class="k">off</span>
+<span class="n">oradebug</span> <span class="n">tracefile_name</span>
+</pre></div>
+
+
+<h3 id="21-oradebug-dump">2.1 oradebug dump</h3>
+<p>With oradebug, SGA, PGA, library cache, row cache, buffers, enqueue, latch, heap, hanganylyze can be dumped.</p>
+<div class="hlcode"><pre><span class="n">oradebug</span> <span class="n">setmypid</span>
+<span class="c1">--for library cache dump</span>
+<span class="n">oradebug</span> <span class="n">dump</span> <span class="n">library_cache</span> <span class="mi">10</span>
+<span class="c1">--row cache dump</span>
+<span class="n">oradebug</span> <span class="n">dump</span> <span class="n">row_cache</span> <span class="mi">10</span>
+<span class="c1">--buffers</span>
+<span class="n">oradebug</span> <span class="n">dump</span> <span class="n">buffers</span> <span class="mi">10</span>
+<span class="c1">--enqueue dump</span>
+<span class="n">oradebug</span> <span class="n">dump</span> <span class="n">enqueues</span> <span class="mi">10</span>
+<span class="c1">--latch dump</span>
+<span class="n">oradebug</span> <span class="n">dump</span> <span class="n">latches</span> <span class="mi">10</span>
+<span class="c1">--headdump</span>
+<span class="n">oradebug</span> <span class="n">dump</span> <span class="n">headdump</span> <span class="mi">2</span>
+<span class="c1">--system state</span>
+<span class="n">oradebug</span> <span class="n">dump</span> <span class="n">systemstate</span> <span class="mi">10</span>
+<span class="c1">--process dump</span>
+<span class="n">oradebug</span> <span class="n">setospid</span> <span class="o">&lt;</span><span class="n">PID</span><span class="o">&gt;</span>
+<span class="n">oradebug</span> <span class="n">dump</span> <span class="n">processstate</span> <span class="mi">10</span>
+</pre></div>
+
+
+<h3 id="22-oradebug-control-process">2.2 oradebug control process</h3>
+<div class="hlcode"><pre><span class="n">oradebug</span> <span class="n">setospid</span> <span class="o">&lt;</span><span class="n">PID</span><span class="o">&gt;</span>
+<span class="c1">--suspend process</span>
+<span class="n">oradebug</span> <span class="n">suspend</span>
+<span class="c1">--resume process</span>
+<span class="n">oradebug</span> <span class="n">resume</span>
+</pre></div>
+
+
+<h1 id="3-latch">3. Latch</h1>
+<p>Latch是为了串行访问机制</p>
+<h2 id="31-latch">3.1 有关latch的重要动态性能视图</h2>
+<div class="hlcode"><pre><span class="n">v</span><span class="err">$</span><span class="n">latch</span>
+<span class="n">v</span><span class="err">$</span><span class="n">latch_parent</span>
+<span class="n">v</span><span class="err">$</span><span class="n">latch_children</span>
+<span class="err">重要栏位</span><span class="o">:</span>
+<span class="n">GETS</span>             <span class="o">:</span>   <span class="n">Willing</span><span class="o">-</span><span class="n">to</span><span class="o">-</span><span class="n">wait</span> <span class="err">模式下睡眠之前的</span><span class="n">latch</span><span class="err">请求成功次数</span>
+<span class="n">MISSES</span>           <span class="o">:</span>   <span class="n">Willing</span><span class="o">-</span><span class="n">to</span><span class="o">-</span><span class="n">wait</span> <span class="err">模式下睡眠之前获得</span><span class="n">latch</span><span class="err">的获得失败次数</span>
+<span class="n">SPIN_GETS</span>        <span class="o">:</span>   <span class="n">Willing</span><span class="o">-</span><span class="n">to</span><span class="o">-</span><span class="n">wait</span> <span class="err">模式下睡眠之前的</span><span class="n">spin</span><span class="err">阶段的获得成功次数</span>
+<span class="n">SLEEPS</span>           <span class="o">:</span>   <span class="n">Willing</span><span class="o">-</span><span class="n">to</span><span class="o">-</span><span class="n">wait</span> <span class="err">模式下睡眠次数</span>
+<span class="n">IMMEDIATE_GETS</span>   <span class="o">:</span>   <span class="n">No</span><span class="o">-</span><span class="n">wait</span> <span class="err">模式下</span><span class="n">latch</span><span class="err">获得成功次数</span>
+<span class="n">IMMEDIATE_MISSES</span> <span class="o">:</span>   <span class="n">No</span><span class="o">-</span><span class="n">wait</span> <span class="err">模式下</span><span class="n">latch</span><span class="err">获得失败次数</span>
+<span class="n">sleep1</span> <span class="o">~</span> <span class="n">sleep4</span>  <span class="o">:</span>   <span class="mi">1</span><span class="o">~</span><span class="mi">3</span><span class="err">次的睡眠次数和</span><span class="mi">4</span><span class="err">次以上的睡眠次数，</span><span class="mi">10</span><span class="n">G</span><span class="err">后使用</span><span class="n">v</span><span class="err">$</span><span class="n">event_histogram</span><span class="err">替代</span>
+<span class="n">WAIT_TIME</span>        <span class="o">:</span>   <span class="err">为获得</span><span class="n">latch</span><span class="err">而等待的时间</span><span class="p">(</span><span class="n">ms</span><span class="p">)</span>
+</pre></div>
+
+
+<p>如果出现latch的争用，高CPU不一定是由实际工作导致的，还有可能是在等待latch的时由于spin(_SPIN_COUND隐藏参数)产生的CPU消耗。但在CPU的系统上不执行spin。</p>
+<h2 id="32-latch">3.2 Latch相关的等待事件</h2>
+<ul>
+<li>latch: cache buffers chains<br />
+    欲在buffer cache搜索特定块的进程，需要获得cache buffers chains，出现争用，则出现此事件</li>
+<li>latch: cache buffers lru chain<br />
+    Buffer cache上欲搜索free buffer和dirty buffer的进程，需要获得cache buffers lru chain, 若发生争用，则出现此事件</li>
+<li>latch: shared pool<br />
+    Shared pool中欲分配到新的chunk进程， 需要获得shared pool latch， 若发生争用，则出现此事件</li>
+<li>latch: library cache<br />
+    欲搜索buffer cache的进程，需要获得library cache latch，若发生争用，则出现此事件</li>
+<li>latch: redo copy<br />
+    欲将DML引起的修改事项记录到redo buffer的进程，需要在工作之前获得redo copy latch，若发生争用，则出现次事件</li>
+</ul>
+<h2 id="34-lock">3.4 Lock相关</h2>
+<table>
+<thead>
+<tr>
+<th>模式</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>None</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Null(N)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Sub-Shared(SS)  or Row-Shared(RS)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Sub-Exclusive(SX) or Row-Exclusive(RX)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Shared(S)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Shared-Sub-Exclusive(SSX) or Shared-Row-Exclusive(SRX)</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Exclusive(X)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="341-enqueue">3.4.1 Enqueue相同关视图</h3>
+<div class="hlcode"><pre><span class="o">--</span><span class="n">v</span><span class="err">$</span><span class="n">lock</span>
+<span class="n">SID</span>     <span class="o">:</span> <span class="err">正拥有或者请求锁会话的</span><span class="n">SID</span><span class="err">，若</span><span class="n">LMODE</span><span class="o">&gt;</span> <span class="mi">0</span><span class="err">时，</span> <span class="err">表示正拥有锁，反正则正在请求锁</span>
+<span class="n">Type</span>    <span class="o">:</span> <span class="n">Enqueue</span><span class="err">的类型：</span><span class="n">TM</span><span class="err">，</span> <span class="n">TX</span><span class="err">，</span> <span class="n">UL</span><span class="err">，</span><span class="n">US</span><span class="err">，</span> <span class="n">CI</span><span class="err">，</span> <span class="n">TC</span><span class="err">等</span>
+<span class="n">ID1</span>     <span class="o">:</span> <span class="err">资源</span><span class="n">ID1</span><span class="err">，</span> <span class="err">与</span><span class="n">v</span><span class="err">$</span><span class="n">event_name</span><span class="err">的</span><span class="n">P2</span><span class="err">对应</span>
+<span class="n">ID2</span>     <span class="o">:</span> <span class="err">资源</span><span class="n">ID2</span><span class="err">，</span> <span class="err">与</span><span class="n">V</span><span class="err">$</span><span class="n">EVENT_NAME</span><span class="err">的</span><span class="n">P3</span><span class="err">对应</span>
+<span class="n">LMODE</span>   <span class="o">:</span> <span class="err">正在拥有锁的模式</span>
+<span class="n">Request</span> <span class="o">:</span> <span class="err">正请求锁的模式</span>
+<span class="n">CTIME</span>   <span class="o">:</span> <span class="err">拥有或者请求锁的时间</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">Block</span>   <span class="o">:</span> <span class="err">锁的阻塞状态，</span><span class="mi">1</span><span class="err">为阻塞，</span><span class="mi">0</span><span class="err">为未阻塞</span>
+</pre></div>
+
+
+<p>v$locked_object提供正在获取中的TX锁相关信息, 可以通过object_id观察相关的object，dba_waiters也能轻松了解block关系</p>
+<h3 id="342">3.4.2 普通锁相关的等待事件</h3>
+<p>TX锁引起的等待事件有：<br />
+- enq: TX - row lock contention<br />
+- enq: TX - allocate ITL entry<br />
+- enq: TX - index contention<br />
+- enq: TX - contention</p>
+<p>若不是Enqueue锁，</p>
+<div class="hlcode"><pre><span class="n">row</span> <span class="n">cache</span> <span class="n">lock</span>                             <span class="o">:</span> <span class="n">row</span> <span class="n">cache</span> <span class="n">lock</span><span class="err">引起的竞争</span>
+<span class="n">buffer</span> <span class="n">busy</span> <span class="n">waits</span><span class="p">,</span> <span class="n">read</span> <span class="n">by</span> <span class="n">another</span> <span class="n">session</span> <span class="o">:</span> <span class="n">buffer</span> <span class="n">lock</span><span class="err">引起的竞争</span>
+<span class="n">library</span> <span class="n">cache</span> <span class="n">lock</span>                         <span class="o">:</span> <span class="n">library</span> <span class="n">cache</span> <span class="n">lock</span><span class="err">引起的竞争</span>
+<span class="n">library</span> <span class="n">cache</span> <span class="n">pin</span>                          <span class="o">:</span> <span class="n">library</span> <span class="n">cache</span> <span class="n">pin</span><span class="err">引起的竞争</span>
+</pre></div>
+
+
+<h1 id="4-oracleowi">4. Oracle内部结构与OWI</h1>
+<p>x$bh视图</p>
+<div class="hlcode"><pre><span class="n">HLADDR</span>  <span class="o">:</span> <span class="err">掌管相应缓冲区的</span><span class="n">latch</span><span class="err">地址，与</span> <span class="n">V</span><span class="err">$</span><span class="n">LATCH_CHILDREN</span><span class="p">.</span><span class="n">addr</span><span class="err">结合，获得所需的</span><span class="n">latch</span><span class="err">信息</span>
+<span class="n">TS</span><span class="err">#</span>     <span class="o">:</span> <span class="n">block</span><span class="err">的表空间信息，</span><span class="n">v</span><span class="err">$</span><span class="n">tablespace</span><span class="p">.</span><span class="n">ts</span><span class="err">#</span>
+<span class="n">DBARFIL</span> <span class="o">:</span> <span class="n">DBA</span><span class="err">中的文件编号</span>
+<span class="n">DBABLK</span>  <span class="o">:</span> <span class="n">DBA</span><span class="err">中的块编号</span>
+<span class="n">CLASS</span>   <span class="o">:</span> <span class="err">块的类型</span>
+<span class="n">TCH</span>     <span class="o">:</span> <span class="n">Touch</span> <span class="n">count</span>
+<span class="n">STATE</span>   <span class="o">:</span> <span class="err">缓冲区的状态</span>
+   <span class="mi">0</span> <span class="o">:</span> <span class="n">Free</span><span class="p">,</span> <span class="n">no</span> <span class="n">valid</span> <span class="n">block</span> <span class="n">image</span>
+   <span class="mi">1</span> <span class="o">:</span> <span class="n">XCUR</span><span class="p">,</span> <span class="n">a</span> <span class="n">current</span> <span class="n">mode</span> <span class="n">block</span><span class="p">,</span> <span class="n">exclusive</span> <span class="n">to</span> <span class="n">this</span> <span class="n">instance</span>
+   <span class="mi">2</span> <span class="o">:</span> <span class="n">SCUR</span><span class="p">,</span> <span class="n">a</span> <span class="n">current</span> <span class="n">mode</span> <span class="n">block</span><span class="p">,</span> <span class="n">shared</span>  <span class="n">with</span> <span class="n">other</span> <span class="n">instance</span><span class="p">(</span><span class="n">RAC</span><span class="p">)</span>
+   <span class="mi">3</span> <span class="o">:</span> <span class="n">CR</span><span class="p">,</span> <span class="n">a</span> <span class="n">consistent</span> <span class="n">read</span> <span class="n">block</span> <span class="n">image</span>
+   <span class="mi">4</span> <span class="o">:</span> <span class="n">READ</span><span class="p">,</span> <span class="n">buffer</span> <span class="n">is</span> <span class="n">reserved</span> <span class="k">for</span> <span class="n">a</span> <span class="n">block</span> <span class="n">being</span> <span class="n">read</span> <span class="n">from</span> <span class="n">disk</span>
+   <span class="mi">5</span> <span class="o">:</span> <span class="n">MREC</span><span class="p">,</span> <span class="n">a</span> <span class="n">block</span> <span class="n">media</span> <span class="n">recovery</span> <span class="n">mode</span>
+   <span class="mi">6</span> <span class="o">:</span> <span class="n">IREC</span><span class="p">,</span> <span class="n">a</span> <span class="n">block</span> <span class="n">crash</span> <span class="n">recovery</span> <span class="n">mode</span>
+   <span class="mi">8</span> <span class="o">:</span> <span class="n">PI</span><span class="p">,</span> <span class="n">past</span> <span class="n">image</span><span class="p">(</span><span class="n">only</span> <span class="n">in</span> <span class="n">RAC</span><span class="p">)</span>
+</pre></div>
+
+
+<h2 id="41-shared-pool">4.1 Shared Pool相关</h2>
+<p>与shared pool相关的等待事件：<br />
+- latch: library cache<br />
+- latch cache lock<br />
+- latch cache pin</p>
+<h3 id="411-sqlshared-pool">4.1.1 SQL的执行的顺序跟shared pool的关系</h3>
+<ol>
+<li>用户提交SQL， 首先检测语法语义权限等，下一步获得hash bucket的library cache latch， 然后确认share pool 上是否存在相同的SQL(soft parse), 若获得 library cache latch中发生争用，则出现 latch: library cache 事件， 若存在相同的SQL，眺至第6步直接执行</li>
+<li>若不存在相同的SQL， 在获得shared pool latch后，从空闲列表中查找大小合适的chunk， 若在获取shared pool latch发生争用，则出现latch: shared pool事件</li>
+<li>通过一系列算法分配或者查找合适的shared pool空间</li>
+<li>如果在分配shared pool时失败，返回ORA-04031</li>
+<li>创建执行计划，生成执行树的(2 ~ 5: Hard Parse)</li>
+<li>Oracle对SQL Cursor以shared模式获得library cache lock和library cache pin, 并执行SQL。此过程如果发生争用，会出现library cache lock和library cache pin等待事件</li>
+<li>Fetch阶段，SQL Cursor将library cache lock变为NULL模式，同时释放library cache pin.</li>
+</ol>
+<h1 id="5">5. 事务相关的等待事件</h1>
+<p>Oracle内部对事务的处理顺序：<br />
+1. 分配online的回滚段， 如果不能获取online的回滚端，会出现enq: US-contention事件，直到获取到为止<br />
+2. 分配到回滚段后，在回滚段头创建transaction table slot<br />
+3. 创建事务表后会生成TXID(transaction id), 再将此ID分配给事务, TXID通过v$transaction.xidsun, xidslot, xidsqn表现<br />
+4. 加载事务对象的数据块至buffer cache, 在块头的ITL(Interested Transaction List)上登记transaction entry, 在获取transaction entry时候，有可能出现enq: TX-allocate ITL entry事件<br />
+5. 将需要修改的块的修改信息存储到PGA，存储名为change vector. 修改一行时，分别创建change vector#1(撤销头块)，change vector#2(撤销块), change vector#3(数据块)相应的change vector，进程将PGA的改变向量复制到redo log buffer，在复制到redo log buffer过程中，需获得redo copy latch, redo allocation latch, redo writing latch, 因此可能会发生以下等待事件：latch:redo copy, latch:redo allocation, latch:redo writing<br />
+6. 将before image记录到undo block，继而修改数据块， 此时数据快变为脏数据快. 而且，buffer cache上创建关于已修改的数据快的consistent read块，如果修改的行正在被其他事务所改变，则发生等待事件enq:TX-row lock contention<br />
+7. commit后给transaction分配scn，commit information存储在redo buffer<br />
+8. 回滚段中的事务表存储已经成功提交的信息，释放资源<br />
+9. redo buffer被记录在redo log上，脏块被DBWE记录到data file中</p>
+<h1 id="6">6. 个别等待事件</h1>
+<h2 id="61-cache-buffers-chains">6.1 cache buffers chains</h2>
+<ul>
+<li>低效的SQL</li>
+<li>Hot Block<br />
+在V$LATCH_CHILDREN中，比较cache buffers chains对应的child#和gets， sleeps值，以此判断特定子latch上的使用次数和争用是否集中，利用以下语句，获取sleeps次数搞的的子latch:</li>
+</ul>
+<div class="hlcode"><pre><span class="n">select</span> <span class="o">*</span> <span class="n">from</span>
+   <span class="p">(</span><span class="n">select</span> <span class="n">child</span><span class="err">#</span><span class="p">,</span> <span class="n">gets</span><span class="p">,</span> <span class="n">sleeps</span> <span class="n">from</span> <span class="n">v</span><span class="err">$</span><span class="n">latch_children</span>
+   <span class="n">where</span> <span class="n">name</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">cache</span> <span class="n">buffers</span> <span class="n">chains</span><span class="err">&#39;</span>
+   <span class="n">order</span> <span class="n">by</span> <span class="mi">3</span> <span class="n">desc</span>
+   <span class="p">)</span> <span class="n">where</span> <span class="n">rownum</span> <span class="o">&lt;=</span><span class="mi">20</span><span class="p">;</span>
+</pre></div>
+
+
+<p>若以上结果中特定的子latch的gets，sleeps值比其他的高很多，则表示有hot block. 另一种方法判断是否存在热快，从v$session_wait视图获得latch的地址，如在cache buffers chains，v$session_event.p1raw就是其地址，如果这个地址过多重复出现，就意味着相应的latch发生次数偏多，此时可解释为热块<br />
+适当的parallel query可以减少cache buffers chains，因为PQ不经过SGA，直接direct path read, 但这个方法不推荐为一般解决方案</p>
+<h2 id="62-cache-buffers-lru-chain">6.2 cache buffers lru chain</h2>
+<p>此事件是在查看LRU/LRUW列表时发生，等待事件为latch:cache buffers lru chain:<br />
+1. 欲读取/修改的块在磁盘中，需要加载进内存，此时Oracle进程会先查询LRU表分配到合适的缓冲区，在此过程需要cache buffers lru chain.<br />
+2. DBWR为了将脏数据写入磁盘，查询LRUW列，将相应缓冲区移动到LRU列的过程中也要用到cache buffers lru chain latch.</p>
+<h2 id="63-buffer-busy-waitsread-by-other-sessiongc-buffer-busy">6.3 buffer busy waits/read by other session/gc buffer busy</h2>
+<p>Oracle虽然使用行锁，但I/O是以块为最小单位，因此存在块单位锁。假设有两行数据存在同一个物理块中，R1，R2，各自有进程对他们进行更新，逻辑上这种并发没问题，由于物理限制，两个块的操作不能同时完成，在获得TX锁前，需要保障当前只有自己在修改块，此时需要获得的锁就叫buffer lock.<br />
+buffer busy waits的参数如下：</p>
+<div class="hlcode"><pre><span class="n">P1</span> <span class="o">:</span>  <span class="err">绝对</span><span class="n">file</span><span class="err">#</span>
+<span class="n">P2</span> <span class="o">:</span>  <span class="n">Block</span><span class="err">#</span>
+<span class="n">P3</span> <span class="o">:</span>  <span class="n">v</span><span class="err">$</span><span class="n">waitclass</span>
+</pre></div>
+
+
+<p>可以适当增加SGA大小以减少此类事件产生。对SQL进行调优.</p>
+<h1 id="scenario">Scenario</h1>
+<p>Customer complained about performance are getting worse and worse after migration.</p>
+<h1 id="analysis">Analysis</h1>
+<h2 id="1-awr">1. AWR</h2>
+<ul>
+<li>DB time= 300 mins, Elapsed time = 60 mins, DB server loading is very heavy.</li>
+</ul>
+<p><img alt="load profile" src="/attach/oracle/load_profile.jpg" /></p>
+<ul>
+<li>log file sync(normal case, the avg wait time is less then 10ms)in the top 5 event(along with "log file parallel write"), and most of the wait class in the top 5 wait event are "User I/O"</li>
+<li>top 5 event also shows "log buffer space", which means log buffer is too small</li>
+</ul>
+<p><img alt="top 10 events" src="/attach/oracle/top_10events.jpg" /></p>
+<ul>
+<li>Log switch(derived), over 150 per/hour</li>
+</ul>
+<p><img alt="log switch" src="/attach/oracle/log_switch.jpg" /></p>
+<p>If "log file sync" and "log file parallel write" are approximate equal, we can consider the Disk I/O is poor<br />
+If "log file sync" is much higher than wait time for "log file parallel", means most of the time waiting is not due to slow I/O, and is most commonly contention caused by user over committing. We also can check the "Instance Activity Statistics" section of AWR, the expect value is 25 user calls/per commit<br />
+<img alt="user calls" src="/attach/oracle/user_calls.jpg" /></p>
+<h2 id="2-alert-log-and-trace-file">2. Alert log and trace file</h2>
+<ul>
+<li>alert log shows log file switch happens 5-10/per minute during the peek hours, and lots of "Checkpoint not complete" warning, if this happens, we can consider to increase the log file size</li>
+<li>lots of "Warning: log write elapsed time xxms, size xxKB" shows in the lgwr trace file, see MOS note 601316.1</li>
+</ul>
+<h2 id="3-parameters">3. Parameters</h2>
+<ul>
+<li>log buffer is 2MB</li>
+<li>log file size is 50MB</li>
+</ul>
+<h2 id="4-conclusion">4. Conclusion</h2>
+<p>What cause "log file sync":</p>
+<ol>
+<li>Slow Disk I/O</li>
+<li>High commit activity</li>
+<li>High CPUs(Not in our case), if the 'r' column of vmstat output is higher than CPU numbers, we can consider excessive consuming</li>
+<li>Bugs(Not in our case)</li>
+</ol>
+<h1 id="recommendation">Recommendation</h1>
+<ol>
+<li>Check with storage/hardware to see if there have any performance issue</li>
+<li>Put the redo log file in the faster disk group, such as RAID1+0, don't put redo log in the RAID5 or SSD, see MOS note 857576.1</li>
+<li>Increase the log buffer to 10MB</li>
+<li>Increase the log file size to 512MB</li>
+<li>Bulk commit in the SQL statements</li>
+</ol>
+<h1 id="explanation-of-log-file-sync">Explanation of log file sync</h1>
+<p>While user commit/rollback, commit will trigger log file sync, that is lgwr writing log buffer(memory) to log file(disk), before the commit/rollback completing, user will see the "log file sync" wait event.</p>
+<p>For diagnosing log file sync issue, we can:<br />
+1. Check the AWR report<br />
+2. Check the alert log, alert log shows how frequently redo log file are switching, recommended time for redo log switching is 15 mins to 30 mins<br />
+3. As of 10.2.0.4, Oracle will write the warning message("log write elapsed time xxms, xxKB") to LGWR trace file, if the size is very small, we can consider the I/O is poor</p>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>AWK - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#linux">linux</a>
+    &nbsp;&#187;&nbsp;AWK
+    <span class="updated">Last Update: &nbsp;
+    2018-01-15 21:20:04
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#awk-with-regular-expression">awk with regular expression</a></li>
+<li><a href="#records-and-fields">records and fields</a></li>
+<li><a href="#the-match-operator">the match operator(~)</a></li>
+<li><a href="#awk-built-in-function">awk built-in function</a><ul>
+<li><a href="#sub-gsub-functions">sub &amp; gsub functions</a></li>
+<li><a href="#index-function">index function</a></li>
+<li><a href="#length-function">length function</a></li>
+<li><a href="#substr-function">substr function</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<h3 id="awk-with-regular-expression">awk with regular expression</h3>
+<div class="hlcode"><pre><span class="n">awk</span> <span class="err">&#39;</span><span class="o">/^</span><span class="n">Mary</span><span class="o">/</span><span class="p">{</span><span class="n">printf</span> <span class="s">&quot;[%10s]</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="err">$</span><span class="mi">1</span> <span class="p">}</span><span class="err">&#39;</span> <span class="n">database</span>
+</pre></div>
+
+
+<h3 id="records-and-fields">records and fields</h3>
+<div class="hlcode"><pre><span class="err">$</span><span class="mi">0</span>       <span class="n">the</span> <span class="n">whole</span> <span class="n">record</span> <span class="n">of</span> <span class="n">tile</span>
+</pre></div>
+
+
+<div class="hlcode"><pre><span class="n">awk</span> <span class="err">&#39;</span><span class="p">{</span><span class="n">print</span> <span class="err">$</span><span class="mi">0</span><span class="p">}</span><span class="err">&#39;</span> <span class="n">database</span><span class="p">.</span><span class="n">txt</span>
+</pre></div>
+
+
+<p>$n       n stands for integer decimal number, the field, if no comma specified, there will be no delimiter between the fields.</p>
+<div class="hlcode"><pre><span class="n">awk</span> <span class="err">&#39;</span><span class="p">{</span><span class="n">print</span> <span class="err">$</span><span class="mi">1</span><span class="p">,</span> <span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">5</span> <span class="p">}</span><span class="err">&#39;</span> <span class="n">database</span>
+</pre></div>
+
+
+<p>The comma is an internal variable of awk, known as output field separator(OFS), the default of OFS is space. When using print to print something, the comma will transform to space automatically.</p>
+<div class="hlcode"><pre><span class="err">$</span><span class="n">NR</span>      <span class="err">$</span><span class="n">NR</span> <span class="n">stands</span> <span class="k">for</span> <span class="n">record</span> <span class="n">numbers</span>
+<span class="err">$</span><span class="n">NF</span>      <span class="n">stands</span> <span class="k">for</span> <span class="n">the</span> <span class="n">fields</span> <span class="n">number</span>
+</pre></div>
+
+
+<h3 id="the-match-operator">the match operator(~)</h3>
+<div class="hlcode"><pre><span class="n">awk</span> <span class="err">&#39;$</span><span class="mi">1</span> <span class="o">~</span> <span class="o">/</span><span class="p">[</span><span class="n">bB</span><span class="p">]</span><span class="n">illy</span><span class="o">/</span><span class="err">&#39;</span> <span class="n">file</span>    <span class="err">#</span><span class="n">seeking</span> <span class="k">for</span> <span class="n">Billy</span><span class="o">/</span><span class="n">billy</span> <span class="n">of</span> <span class="n">field</span> <span class="n">one</span>
+<span class="n">awk</span> <span class="err">&#39;$</span><span class="mi">1</span> <span class="o">!~</span> <span class="o">/</span><span class="n">ly</span><span class="err">$</span><span class="o">/</span><span class="err">&#39;</span> <span class="n">file</span>        <span class="err">#</span><span class="n">seeking</span> <span class="k">for</span> <span class="n">not</span> <span class="n">end</span> <span class="n">with</span> <span class="n">ly</span> <span class="n">of</span> <span class="n">filed</span> <span class="n">one</span>
+</pre></div>
+
+
+<h2 id="awk-built-in-function">awk built-in function</h2>
+<h3 id="sub-gsub-functions">sub &amp; gsub functions</h3>
+<p><strong><em>Format</em></strong></p>
+<div class="hlcode"><pre><span class="n">sub</span><span class="p">(</span><span class="n">regrex</span><span class="p">,</span> <span class="n">substitution</span> <span class="n">string</span> <span class="p">);</span>
+<span class="n">sub</span><span class="p">(</span><span class="n">regrex</span><span class="p">,</span> <span class="n">substitution</span> <span class="n">string</span><span class="p">,</span> <span class="n">target</span> <span class="n">string</span> <span class="p">)</span>
+</pre></div>
+
+
+<p><strong><em>Examples</em></strong></p>
+<div class="hlcode"><pre><span class="n">awk</span> <span class="err">&#39;</span><span class="p">{</span> <span class="n">sub</span><span class="p">(</span><span class="o">/</span><span class="n">Tom</span><span class="o">/</span><span class="p">,</span> <span class="s">&quot;Tommy&quot;</span><span class="p">);</span> <span class="n">print</span> <span class="err">$</span><span class="mi">1</span> <span class="p">}</span><span class="err">&#39;</span> <span class="n">datafile</span>         <span class="err">#</span><span class="n">Everywhere</span> <span class="n">the</span> <span class="n">regrex</span> <span class="n">Tom</span> <span class="n">is</span> <span class="n">found</span> <span class="n">in</span> <span class="n">the</span> <span class="n">record</span><span class="p">(</span><span class="err">$</span><span class="mi">0</span><span class="p">),</span> <span class="n">it</span> <span class="n">will</span> <span class="n">be</span> <span class="n">replaced</span> <span class="n">to</span> <span class="n">Tommy</span>
+<span class="n">awk</span> <span class="err">&#39;</span><span class="p">{</span> <span class="n">sub</span><span class="p">(</span><span class="o">/</span><span class="n">Tom</span><span class="o">/</span><span class="p">,</span> <span class="s">&quot;Tommy&quot;</span><span class="p">,</span> <span class="err">$</span><span class="mi">2</span><span class="p">;</span> <span class="n">print</span> <span class="err">$</span><span class="mi">1</span><span class="p">)</span> <span class="p">}</span><span class="err">&#39;</span> <span class="n">datafile</span>     <span class="err">#</span><span class="n">Everywhere</span> <span class="n">the</span> <span class="n">regrex</span> <span class="n">Tom</span> <span class="n">is</span> <span class="n">found</span> <span class="n">in</span> <span class="n">the</span> <span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="n">it</span> <span class="n">will</span> <span class="n">be</span> <span class="n">replaced</span> <span class="n">to</span> <span class="n">Tommy</span>
+</pre></div>
+
+
+<h3 id="index-function">index function</h3>
+<p>The index function returns the first position where a string is found in a string.<br />
+<strong><em>Format</em></strong></p>
+<div class="hlcode"><pre><span class="n">index</span><span class="p">(</span><span class="n">strings</span><span class="p">,</span> <span class="n">substring</span><span class="p">)</span>
+</pre></div>
+
+
+<p><strong><em>Examples</em></strong></p>
+<div class="hlcode"><pre><span class="n">echo</span> <span class="s">&quot;h&quot;</span> <span class="o">|</span><span class="n">awk</span> <span class="err">&#39;</span><span class="p">{</span><span class="n">print</span> <span class="n">index</span><span class="p">(</span><span class="s">&quot;helloworld&quot;</span><span class="p">,</span> <span class="s">&quot;world&quot;</span><span class="p">)}</span><span class="err">&#39;</span>
+<span class="mi">6</span>
+</pre></div>
+
+
+<h3 id="length-function">length function</h3>
+<p>The length function returns the length of the strings<br />
+<strong><em>Format</em></strong></p>
+<div class="hlcode"><pre><span class="n">length</span><span class="p">(</span><span class="n">strings</span><span class="p">)</span>
+<span class="n">echo</span> <span class="s">&quot;hello&quot;</span> <span class="o">|</span><span class="n">awk</span> <span class="err">&#39;</span><span class="p">{</span> <span class="n">print</span> <span class="n">length</span><span class="p">(</span><span class="s">&quot;hello&quot;</span><span class="p">)</span> <span class="p">}</span><span class="err">&#39;</span>
+<span class="mi">5</span>
+</pre></div>
+
+
+<h3 id="substr-function">substr function</h3>
+<p>The substr returns the substring of a string starting at a position where the first position is one.<br />
+<strong><em>Format</em></strong></p>
+<div class="hlcode"><pre><span class="n">substr</span><span class="p">(</span><span class="n">string</span><span class="p">,</span> <span class="n">starting</span> <span class="n">position</span><span class="p">)</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">string</span><span class="p">,</span> <span class="n">starting</span> <span class="n">position</span><span class="p">,</span> <span class="n">length</span> <span class="n">of</span> <span class="n">the</span> <span class="n">string</span><span class="p">)</span>
+</pre></div>
+
+
+<p><strong><em>Examples</em></strong></p>
+<div class="hlcode"><pre><span class="n">echo</span> <span class="s">&quot;hello&quot;</span> <span class="o">|</span><span class="n">awk</span> <span class="err">&#39;</span><span class="p">{</span> <span class="n">print</span> <span class="n">substr</span><span class="p">(</span><span class="s">&quot;helloworld&quot;</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span> <span class="p">}</span><span class="err">&#39;</span>
+<span class="n">world</span>
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

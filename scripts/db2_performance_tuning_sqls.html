@@ -1,0 +1,447 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>DB2 performance tuning SQLs - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#scripts">scripts</a>
+    &nbsp;&#187;&nbsp;DB2 performance tuning SQLs
+    <span class="updated">Last Update: &nbsp;
+    2018-01-16 16:58:20
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#monitoring-performance-with-sql-buffer-pools">Monitoring performance with SQL -- buffer pools</a></li>
+<li><a href="#monitoring-performance-with-sql-sorts">Monitoring performance with SQL -- Sorts</a></li>
+<li><a href="#monitoring-performance-with-sql-package-cache">Monitoring performance with SQL -- package cache</a></li>
+<li><a href="#top-dynamic-sqls">Top dynamic SQLs</a></li>
+<li><a href="#long-running-sql">Long running SQL</a></li>
+<li><a href="#lock-wait-time">Lock wait time</a></li>
+<li><a href="#lock-chains">Lock chains</a></li>
+<li><a href="#lock-memory-usage">Lock memory usage</a></li>
+<li><a href="#lock-escalation-deadlocks-and-timeouts">Lock escalation, deadlocks and timeouts</a></li>
+<li><a href="#costly-table-scan">Costly table scan</a></li>
+<li><a href="#prefetchers-too-aggressive-or-not-aggressive-enough">Prefetchers too aggressive or not aggressive enough</a></li>
+<li><a href="#database-memory-usage">Database memory usage</a></li>
+<li><a href="#log-space-usage">Log space usage</a></li>
+<li><a href="#oldest-transaction-holding-log-space">Oldest transaction holding log space</a></li>
+<li><a href="#tablespace-size">Tablespace size</a></li>
+<li><a href="#db-storage-path">DB storage path</a></li>
+<li><a href="#get-system-information">get system information</a></li>
+<li><a href="#get-container">get container</a></li>
+</ul>
+</div>
+<h2 id="monitoring-performance-with-sql-buffer-pools">Monitoring performance with SQL -- buffer pools</h2>
+<ul>
+<li>showing buffer pools hitratios</li>
+</ul>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">select</span> <span class="n">substr</span><span class="p">(</span><span class="n">bp_name</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">30</span><span class="p">)</span> <span class="n">as</span> <span class="n">bp_name</span> <span class="p">,</span>
+<span class="n">data_hit_ratio_percent</span><span class="p">,</span>
+<span class="n">index_hit_ratio_percent</span> <span class="p">,</span>
+<span class="n">total_hit_ratio_percent</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">bp_hitratio</span>
+<span class="n">where</span> <span class="n">bp_name</span> <span class="n">not</span> <span class="n">like</span> <span class="err">&#39;</span><span class="n">IBMSYSTEM</span><span class="o">%</span><span class="err">&#39;</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<h2 id="monitoring-performance-with-sql-sorts">Monitoring performance with SQL -- Sorts</h2>
+<div class="hlcode"><pre><span class="n">select</span> <span class="n">sheapthres_shr</span> <span class="n">as</span> <span class="s">&quot;Shared_sort_heap&quot;</span> <span class="p">,</span> \
+<span class="n">sort_shrheap_allocated</span> <span class="n">as</span> <span class="s">&quot;Shared_sort_allocated&quot;</span> <span class="p">,</span> \
+<span class="n">dec</span><span class="p">((</span><span class="mi">100</span> <span class="o">*</span> <span class="n">sort_shrheap_allocated</span><span class="p">)</span><span class="o">/</span><span class="n">sheapthres_shr</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> \
+<span class="n">as</span> <span class="s">&quot; % Sheap_alloc&quot;</span> <span class="p">,</span> \
+<span class="n">dec</span><span class="p">((</span><span class="mi">100</span><span class="o">*</span> <span class="n">sort_shrheap_top</span><span class="p">)</span><span class="o">/</span><span class="n">sheapthres_shr</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> \
+<span class="n">as</span> <span class="s">&quot; % Max Sheap_alloc&quot;</span> <span class="p">,</span> \
+<span class="n">sort_overflows</span> <span class="n">as</span> <span class="s">&quot;Sort_Overflows&quot;</span><span class="p">,</span> \
+<span class="n">active_sorts</span> <span class="n">as</span> <span class="s">&quot;Active_Sorts&quot;</span> \
+<span class="n">from</span> <span class="p">(</span><span class="n">select</span> <span class="kt">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="n">as</span> <span class="n">sheapthres_shr</span> <span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">dbcfg</span> <span class="n">where</span> <span class="n">name</span><span class="o">=</span><span class="err">&#39;</span><span class="n">sheapthres_shr</span><span class="err">&#39;</span><span class="p">)</span> <span class="n">as</span> <span class="n">a</span><span class="p">,</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapdb</span>
+</pre></div>
+
+
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">with</span> <span class="n">dbcfg1</span> <span class="n">as</span>
+<span class="p">(</span><span class="n">select</span> <span class="kt">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="n">as</span> <span class="n">sheapthres_shr</span> <span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">dbcfg</span> <span class="n">where</span> <span class="n">name</span><span class="o">=</span><span class="err">&#39;</span><span class="n">sheapthres_shr</span><span class="err">&#39;</span><span class="p">)</span>
+<span class="n">select</span> <span class="n">sheapthres_shr</span> <span class="n">as</span> <span class="s">&quot;Shared_sort_heap&quot;</span> <span class="p">,</span>
+<span class="n">sort_shrheap_allocated</span> <span class="n">as</span> <span class="s">&quot;Shared_sort_allocated&quot;</span> <span class="p">,</span>
+<span class="n">dec</span><span class="p">((</span><span class="mi">100</span> <span class="o">*</span> <span class="n">sort_shrheap_allocated</span><span class="p">)</span><span class="o">/</span><span class="n">sheapthres_shr</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Sheap_alloc_Percentage&quot;</span> <span class="p">,</span>
+<span class="n">dec</span><span class="p">((</span><span class="mi">100</span><span class="o">*</span> <span class="n">sort_shrheap_top</span><span class="p">)</span><span class="o">/</span><span class="n">sheapthres_shr</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Max_Sheap_alloc_Percentage&quot;</span> <span class="p">,</span>
+<span class="n">sort_overflows</span> <span class="n">as</span> <span class="s">&quot;Sort_Overflows&quot;</span><span class="p">,</span>
+<span class="n">active_sorts</span> <span class="n">as</span> <span class="s">&quot;Active_Sorts&quot;</span>
+<span class="n">from</span> <span class="n">dbcfg1</span><span class="p">,</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapdb</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<h2 id="monitoring-performance-with-sql-package-cache">Monitoring performance with SQL -- package cache</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">with</span> <span class="n">dbcfg1</span> <span class="n">as</span>
+<span class="p">(</span><span class="n">select</span> <span class="kt">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="n">as</span> <span class="n">pckcachesz</span> <span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">dbcfg</span> <span class="n">where</span> <span class="n">name</span><span class="o">=</span><span class="err">&#39;</span><span class="n">pckcachesz</span><span class="err">&#39;</span><span class="p">)</span>
+<span class="n">select</span> <span class="n">pckcachesz</span> <span class="n">as</span> <span class="s">&quot;Package_cache_size&quot;</span><span class="p">,</span>
+<span class="n">pkg_cache_lookups</span> <span class="n">as</span> <span class="s">&quot;Lookups&quot;</span><span class="p">,</span>
+<span class="n">pkg_cache_inserts</span> <span class="n">as</span> <span class="s">&quot;Inserts&quot;</span><span class="p">,</span>
+<span class="n">pkg_cache_num_overflows</span> <span class="n">as</span> <span class="s">&quot;Overflows&quot;</span><span class="p">,</span>
+<span class="mi">100</span> <span class="o">*</span> <span class="n">pkg_cache_size_top</span><span class="o">/</span><span class="p">(</span><span class="n">pckcachesz</span><span class="o">*</span><span class="mi">4096</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;PKG_cache_alloc_percent&quot;</span>
+<span class="n">from</span> <span class="n">dbcfg1</span><span class="p">,</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapdb</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<h2 id="top-dynamic-sqls">Top dynamic SQLs</h2>
+<ul>
+<li>order by number of executions</li>
+</ul>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">select</span> <span class="n">NUM_EXECUTIONS</span> <span class="n">as</span> <span class="s">&quot;Num_Execs&quot;</span><span class="p">,</span>
+<span class="n">AVERAGE_EXECUTION_TIME_S</span> <span class="n">as</span> <span class="s">&quot;Avg_Time_sec&quot;</span><span class="p">,</span>
+<span class="n">STMT_SORTS</span><span class="p">,</span>
+<span class="n">SORTS_PER_EXECUTION</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">stmt_text</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">150</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;SQL_STMT&quot;</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">top_dynamic_sql</span>
+<span class="n">where</span> <span class="n">NUM_EXECUTIONS</span><span class="o">&gt;</span><span class="mi">0</span>
+<span class="n">order</span> <span class="n">by</span> <span class="mi">1</span> <span class="n">desc</span>
+<span class="n">fetch</span> <span class="n">first</span> <span class="mi">10</span> <span class="n">rows</span> <span class="n">only</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<div class="hlcode"><pre><span class="n">select</span> <span class="n">num_executions</span> <span class="n">as</span> <span class="s">&quot;Num Execs&quot;</span><span class="p">,</span> <span class="n">average_execution_time_s</span> <span class="n">as</span> <span class="s">&quot;Avg Time (sec)&quot;</span><span class="p">,</span>
+<span class="n">stmt_sorts</span> <span class="n">as</span> <span class="s">&quot;Num Sorts&quot;</span><span class="p">,</span> <span class="n">sorts_per_execution</span> <span class="n">as</span> <span class="s">&quot;Sorts Per Stmt&quot;</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">stmt_text</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">35</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;SQL Stmt&quot;</span> <span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">top_dynamic_sql</span> <span class="n">where</span>
+<span class="n">num_executions</span> <span class="o">&gt;</span> <span class="mi">0</span>
+<span class="n">order</span> <span class="n">by</span> <span class="mi">1</span> <span class="n">desc</span>
+<span class="n">fetch</span> <span class="n">first</span> <span class="mi">5</span> <span class="n">rows</span> <span class="n">only</span><span class="p">;</span>
+</pre></div>
+
+
+<ul>
+<li>order by AVERAGE_EXECUTION_TIME_S</li>
+</ul>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">select</span> <span class="n">NUM_EXECUTIONS</span> <span class="n">as</span> <span class="s">&quot;Num_Execs&quot;</span><span class="p">,</span>
+<span class="n">AVERAGE_EXECUTION_TIME_S</span> <span class="n">as</span> <span class="s">&quot;Avg_Time_sec&quot;</span><span class="p">,</span>
+<span class="n">STMT_SORTS</span><span class="p">,</span>
+<span class="n">SORTS_PER_EXECUTION</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">stmt_text</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">150</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;SQL_STMT&quot;</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">top_dynamic_sql</span>
+<span class="n">where</span> <span class="n">NUM_EXECUTIONS</span><span class="o">&gt;</span><span class="mi">0</span>
+<span class="n">order</span> <span class="n">by</span> <span class="mi">2</span> <span class="n">desc</span>
+<span class="n">fetch</span> <span class="n">first</span> <span class="mi">10</span> <span class="n">rows</span> <span class="n">only</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<div class="hlcode"><pre><span class="n">select</span> <span class="n">num_executions</span> <span class="n">as</span> <span class="s">&quot;Num Execs&quot;</span><span class="p">,</span> <span class="n">average_execution_time_s</span> <span class="n">as</span> <span class="s">&quot;Avg Time (sec)&quot;</span><span class="p">,</span>
+<span class="n">stmt_sorts</span> <span class="n">as</span> <span class="s">&quot;Num Sorts&quot;</span><span class="p">,</span> <span class="n">sorts_per_execution</span> <span class="n">as</span> <span class="s">&quot;Sorts Per Stmt&quot;</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">stmt_text</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">35</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;SQL Stmt&quot;</span> <span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">top_dynamic_sql</span> <span class="n">where</span>
+<span class="n">num_executions</span> <span class="o">&gt;</span> <span class="mi">0</span>
+<span class="n">order</span> <span class="n">by</span> <span class="mi">2</span> <span class="n">desc</span>
+<span class="n">fetch</span> <span class="n">first</span> <span class="mi">5</span> <span class="n">rows</span> <span class="n">only</span><span class="p">;</span>
+</pre></div>
+
+
+<h2 id="long-running-sql">Long running SQL</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">select</span> <span class="n">substr</span><span class="p">(</span><span class="n">appl_name</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span> <span class="n">as</span> <span class="n">Appl_Name</span><span class="p">,</span>
+<span class="n">ELAPSED_TIME_MIN</span><span class="p">,</span> <span class="n">APPL_STATUS</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">AUTHID</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="n">auth_id</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">INBOUND_COMM_ADDRESS</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">15</span><span class="p">)</span> <span class="n">as</span> <span class="n">IP_ADDR</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">stmt_text</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span> <span class="n">as</span> <span class="n">SQL_stmt</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">long_running_sql</span>
+<span class="n">order</span> <span class="n">by</span> <span class="mi">2</span> <span class="n">desc</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<h2 id="lock-wait-time">Lock wait time</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">select</span> <span class="n">substr</span><span class="p">(</span><span class="n">ai</span><span class="p">.</span><span class="n">appl_name</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span> <span class="n">as</span> <span class="n">appl_name</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">ai</span><span class="p">.</span><span class="n">primary_auth_id</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="n">auth_id</span><span class="p">,</span>
+<span class="n">ap</span><span class="p">.</span><span class="n">lock_waits</span> <span class="n">as</span> <span class="n">lockwaits</span><span class="p">,</span>
+<span class="n">ap</span><span class="p">.</span><span class="n">lock_wait_time</span><span class="o">/</span><span class="mi">1000</span> <span class="n">as</span> <span class="n">Total_wait</span><span class="p">,</span>
+<span class="p">(</span><span class="n">ap</span><span class="p">.</span><span class="n">lock_wait_time</span><span class="o">/</span><span class="n">ap</span><span class="p">.</span><span class="n">lock_waits</span><span class="p">)</span> <span class="n">as</span> <span class="n">Avg_wait</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapappl_info</span> <span class="n">ai</span><span class="p">,</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapappl</span> <span class="n">ap</span>
+<span class="n">where</span> <span class="n">ai</span><span class="p">.</span><span class="n">agent_id</span><span class="o">=</span><span class="n">ap</span><span class="p">.</span><span class="n">agent_id</span> <span class="n">and</span> <span class="n">ap</span><span class="p">.</span><span class="n">lock_waits</span><span class="o">&gt;</span><span class="mi">0</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<h2 id="lock-chains">Lock chains</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">select</span> <span class="n">substr</span><span class="p">(</span><span class="n">ai_h</span><span class="p">.</span><span class="n">appl_name</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Hold_appl&quot;</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">ai_h</span><span class="p">.</span><span class="n">primary_auth_id</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Holder&quot;</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">lw</span><span class="p">.</span><span class="n">authid</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="n">Waiter</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">lw</span><span class="p">.</span><span class="n">appl_name</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="n">Wait_AppL</span><span class="p">,</span>
+<span class="n">lw</span><span class="p">.</span><span class="n">lock_mode</span><span class="p">,</span>
+<span class="n">lw</span><span class="p">.</span><span class="n">lock_object_type</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">lw</span><span class="p">.</span><span class="n">tabname</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="n">tabname</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">lw</span><span class="p">.</span><span class="n">tabschema</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="n">tabschema</span><span class="p">,</span>
+<span class="n">timestampdiff</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="kt">char</span><span class="p">(</span><span class="n">lw</span><span class="p">.</span><span class="n">snapshot_timestamp</span><span class="o">-</span><span class="n">lw</span><span class="p">.</span><span class="n">lock_wait_start_time</span><span class="p">))</span> <span class="n">as</span> <span class="n">waitings</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">lockwaits</span> <span class="n">lw</span><span class="p">,</span><span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapappl_info</span> <span class="n">ai_h</span>
+<span class="n">where</span> <span class="n">lw</span><span class="p">.</span><span class="n">agent_id_holding_lk</span><span class="o">=</span><span class="n">ai_h</span><span class="p">.</span><span class="n">agent_id</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<div class="hlcode"><pre><span class="n">select</span> <span class="n">substr</span><span class="p">(</span><span class="n">ai_h</span><span class="p">.</span><span class="n">appl_name</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Hold App&quot;</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">ai_h</span><span class="p">.</span><span class="n">primary_auth_id</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Holder&quot;</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">lw</span><span class="p">.</span><span class="n">appl_name</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Wait App&quot;</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">lw</span><span class="p">.</span><span class="n">authid</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Waiter&quot;</span><span class="p">,</span>
+<span class="n">lw</span><span class="p">.</span><span class="n">lock_mode</span> <span class="p">,</span>
+<span class="n">lw</span><span class="p">.</span><span class="n">lock_object_type</span> <span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">lw</span><span class="p">.</span><span class="n">tabname</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;TabName&quot;</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">lw</span><span class="p">.</span><span class="n">tabschema</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Schema&quot;</span><span class="p">,</span>
+<span class="n">timestampdiff</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="kt">char</span><span class="p">(</span><span class="n">lw</span><span class="p">.</span><span class="n">snapshot_timestamp</span> <span class="o">-</span> <span class="n">lw</span><span class="p">.</span><span class="n">lock_wait_start_time</span><span class="p">))</span>
+<span class="n">as</span> <span class="s">&quot;waiting (s)&quot;</span>
+<span class="n">from</span>
+<span class="n">sysibmadm</span><span class="p">.</span><span class="n">lockwaits</span> <span class="n">lw</span> <span class="p">,</span>
+<span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapappl_info</span> <span class="n">ai_h</span>
+<span class="n">where</span>
+<span class="n">lw</span><span class="p">.</span><span class="n">agent_id_holding_lk</span> <span class="o">=</span> <span class="n">ai_h</span><span class="p">.</span><span class="n">agent_id</span> <span class="p">;</span>
+</pre></div>
+
+
+<h2 id="lock-memory-usage">Lock memory usage</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">with</span> <span class="n">dbcfg1</span> <span class="n">as</span>
+<span class="p">(</span> <span class="n">select</span> <span class="kt">float</span><span class="p">(</span><span class="kt">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">*</span> <span class="mi">4096</span><span class="p">)</span> <span class="n">as</span> <span class="n">locklist</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">dbcfg</span> <span class="n">where</span> <span class="n">name</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">locklist</span><span class="err">&#39;</span> <span class="p">)</span> <span class="p">,</span>
+<span class="n">dbcfg2</span> <span class="n">as</span> <span class="p">(</span> <span class="n">select</span> <span class="kt">float</span><span class="p">(</span><span class="kt">int</span><span class="p">(</span><span class="n">value</span><span class="p">))</span> <span class="n">as</span> <span class="n">maxlocks</span> <span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">dbcfg</span> <span class="n">where</span> <span class="n">name</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">maxlocks</span><span class="err">&#39;</span> <span class="p">)</span>
+<span class="n">select</span> <span class="n">dec</span><span class="p">((</span><span class="n">lock_list_in_use</span><span class="o">/</span><span class="n">locklist</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Lock_List_Percent&quot;</span><span class="p">,</span>
+<span class="n">dec</span><span class="p">((</span><span class="n">lock_list_in_use</span><span class="o">/</span><span class="p">(</span><span class="n">locklist</span><span class="o">*</span><span class="p">(</span><span class="n">maxlocks</span><span class="o">/</span><span class="mi">100</span><span class="p">))</span><span class="o">*</span><span class="mi">100</span><span class="p">),</span><span class="mi">4</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Maxlockpercent&quot;</span><span class="p">,</span>
+<span class="n">appls_cur_cons</span> <span class="n">as</span> <span class="s">&quot;Number_of_Cons&quot;</span><span class="p">,</span>
+<span class="n">lock_list_in_use</span><span class="o">/</span><span class="n">appls_cur_cons</span> <span class="n">as</span> <span class="s">&quot;Avg_Lock_Mem_Per_Con_bytes&quot;</span>
+<span class="n">from</span> <span class="n">dbcfg1</span><span class="p">,</span> <span class="n">dbcfg2</span> <span class="p">,</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapdb</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<div class="hlcode"><pre><span class="n">with</span> <span class="n">dbcfg1</span> <span class="n">as</span>
+<span class="p">(</span> <span class="n">select</span> <span class="kt">float</span><span class="p">(</span><span class="kt">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">*</span> <span class="mi">4096</span><span class="p">)</span> <span class="n">as</span> <span class="n">locklist</span> <span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">dbcfg</span> <span class="n">where</span> <span class="n">name</span> <span class="o">=</span>
+<span class="err">&#39;</span><span class="n">locklist</span><span class="err">&#39;</span> <span class="p">)</span> <span class="p">,</span>
+<span class="n">dbcfg2</span> <span class="n">as</span>
+<span class="p">(</span> <span class="n">select</span> <span class="kt">float</span><span class="p">(</span><span class="kt">int</span><span class="p">(</span><span class="n">value</span><span class="p">))</span> <span class="n">as</span> <span class="n">maxlocks</span> <span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">dbcfg</span> <span class="n">where</span> <span class="n">name</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">maxlocks</span><span class="err">&#39;</span>
+<span class="p">)</span>
+<span class="n">select</span> <span class="n">dec</span><span class="p">((</span><span class="n">lock_list_in_use</span><span class="o">/</span><span class="n">locklist</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;% Lock List&quot;</span><span class="p">,</span>
+<span class="n">dec</span><span class="p">((</span><span class="n">lock_list_in_use</span><span class="o">/</span><span class="p">(</span><span class="n">locklist</span><span class="o">*</span><span class="p">(</span><span class="n">maxlocks</span><span class="o">/</span><span class="mi">100</span><span class="p">))</span><span class="o">*</span><span class="mi">100</span><span class="p">),</span><span class="mi">4</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">as</span> <span class="s">&quot;% to Maxlock&quot;</span><span class="p">,</span>
+<span class="n">appls_cur_cons</span> <span class="n">as</span> <span class="s">&quot;Number of Cons&quot;</span><span class="p">,</span>
+<span class="n">lock_list_in_use</span><span class="o">/</span><span class="n">appls_cur_cons</span> <span class="n">as</span> <span class="s">&quot;Avg Lock Mem Per Con (bytes)&quot;</span>
+<span class="n">from</span> <span class="n">dbcfg1</span><span class="p">,</span> <span class="n">dbcfg2</span> <span class="p">,</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapdb</span> <span class="p">;</span>
+</pre></div>
+
+
+<h2 id="lock-escalation-deadlocks-and-timeouts">Lock escalation, deadlocks and timeouts</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">select</span> <span class="n">substr</span><span class="p">(</span><span class="n">ai</span><span class="p">.</span><span class="n">appl_name</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="n">Application</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">ai</span><span class="p">.</span><span class="n">primary_auth_id</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="n">AuthID</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">ap</span><span class="p">.</span><span class="n">locks_held</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Locks_held&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">ap</span><span class="p">.</span><span class="n">lock_escals</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Escalations&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">ap</span><span class="p">.</span><span class="n">lock_timeouts</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Lock_Timeouts&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">ap</span><span class="p">.</span><span class="n">deadlocks</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Deadlocks&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">ap</span><span class="p">.</span><span class="n">int_deadlock_rollbacks</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Dlock_Victim&quot;</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">inbound_comm_address</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">15</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;IP_Addr&quot;</span>
+<span class="n">from</span>
+<span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapappl</span> <span class="n">ap</span><span class="p">,</span>
+<span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapappl_info</span> <span class="n">ai</span>
+<span class="n">where</span> <span class="n">ap</span><span class="p">.</span><span class="n">agent_id</span> <span class="o">=</span> <span class="n">ai</span><span class="p">.</span><span class="n">agent_id</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<div class="hlcode"><pre><span class="n">select</span> <span class="n">substr</span><span class="p">(</span><span class="n">ai</span><span class="p">.</span><span class="n">appl_name</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="n">Application</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">ai</span><span class="p">.</span><span class="n">primary_auth_id</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="n">AuthID</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">ap</span><span class="p">.</span><span class="n">locks_held</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;# Locks&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">ap</span><span class="p">.</span><span class="n">lock_escals</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Escalations&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">ap</span><span class="p">.</span><span class="n">lock_timeouts</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Lock Timeouts&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">ap</span><span class="p">.</span><span class="n">deadlocks</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Deadlocks&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">ap</span><span class="p">.</span><span class="n">int_deadlock_rollbacks</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Dlock Victim&quot;</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">inbound_comm_address</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">15</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;IP Address&quot;</span>
+<span class="n">from</span>
+<span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapappl</span> <span class="n">ap</span><span class="p">,</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapappl_info</span> <span class="n">ai</span>
+<span class="n">where</span> <span class="n">ap</span><span class="p">.</span><span class="n">agent_id</span> <span class="o">=</span> <span class="n">ai</span><span class="p">.</span><span class="n">agent_id</span> <span class="p">;</span>
+</pre></div>
+
+
+<h2 id="costly-table-scan">Costly table scan</h2>
+<p><strong><em>High rows read to rows selected ratio indicates table scans</em></strong></p>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">select</span> <span class="n">substr</span><span class="p">(</span><span class="n">authid</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="n">authid</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">appl_name</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">20</span><span class="p">)</span> <span class="n">as</span> <span class="n">appl_name</span> <span class="p">,</span>
+<span class="n">AGENT_ID</span><span class="p">,</span>
+<span class="n">percent_rows_selected</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">appl_performance</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<h2 id="prefetchers-too-aggressive-or-not-aggressive-enough">Prefetchers too aggressive or not aggressive enough</h2>
+<p><strong><em>If too many pages are read asynchronously from disk into the buffer pool and no application ever accesses those pages, then the prefetching is a waste.</em></strong></p>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">with</span> <span class="n">bp_snap</span> <span class="n">as</span> <span class="p">(</span>
+<span class="n">select</span> <span class="n">substr</span><span class="p">(</span><span class="n">bp_name</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">30</span><span class="p">)</span> <span class="n">as</span> <span class="n">bp_name</span> <span class="p">,</span>
+<span class="n">unread_prefetch_pages</span> <span class="p">,</span>
+<span class="n">pool_async_data_reads</span> <span class="o">+</span> <span class="n">pool_async_index_reads</span> <span class="n">as</span> <span class="n">Async_Reads</span> <span class="p">,</span>
+<span class="n">pool_data_p_reads</span> <span class="o">+</span> <span class="n">pool_index_p_reads</span> <span class="o">+</span> <span class="n">pool_temp_data_p_reads</span> <span class="o">+</span> <span class="n">pool_temp_index_p_reads</span> <span class="n">as</span> <span class="n">Total_Reads</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapbp</span>
+<span class="n">where</span> <span class="n">bp_name</span> <span class="n">not</span> <span class="n">like</span> <span class="err">&#39;</span><span class="n">IBMSYSTEM</span><span class="o">%</span><span class="err">&#39;</span>
+<span class="p">)</span>
+<span class="n">select</span> <span class="n">bp_name</span><span class="p">,</span> <span class="n">unread_prefetch_pages</span><span class="p">,</span>
+<span class="n">dec</span> <span class="p">(</span> <span class="mi">100</span> <span class="o">*</span> <span class="p">(</span> <span class="n">Total_reads</span> <span class="o">-</span> <span class="n">Async_reads</span> <span class="p">)</span> <span class="o">/</span> <span class="n">Total_reads</span> <span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Synch_Reads_Percent&quot;</span><span class="p">,</span>
+<span class="n">dec</span> <span class="p">(</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">unread_prefetch_pages</span> <span class="o">/</span> <span class="n">Total_reads</span> <span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Unread_Pages_Percent&quot;</span>
+<span class="n">from</span> <span class="n">bp_snap</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<h2 id="database-memory-usage">Database memory usage</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">select</span> <span class="n">pool_id</span><span class="p">,</span> <span class="n">pool_secondary_id</span><span class="p">,</span> <span class="n">pool_cur_size</span><span class="p">,</span> <span class="n">pool_watermark</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapdb_memory_pool</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<h2 id="log-space-usage">Log space usage</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">select</span> <span class="kt">int</span><span class="p">(</span><span class="n">total_log_used</span><span class="o">/</span><span class="mi">1024</span><span class="o">/</span><span class="mi">1024</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Log_Used_Meg&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">total_log_available</span><span class="o">/</span><span class="mi">1024</span><span class="o">/</span><span class="mi">1024</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Log_Space_Free_Meg&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">((</span><span class="kt">float</span><span class="p">(</span><span class="n">total_log_used</span><span class="p">)</span> <span class="o">/</span> <span class="kt">float</span><span class="p">(</span><span class="n">total_log_used</span><span class="o">+</span><span class="n">total_log_available</span><span class="p">))</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Pct_Used&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">tot_log_used_top</span><span class="o">/</span><span class="mi">1024</span><span class="o">/</span><span class="mi">1024</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Max_Log_Used_Meg&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">sec_log_used_top</span><span class="o">/</span><span class="mi">1024</span><span class="o">/</span><span class="mi">1024</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Max_Sec_Used_Meg&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">sec_logs_allocated</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Secondaries&quot;</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapdb</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<div class="hlcode"><pre><span class="n">select</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">total_log_used</span><span class="o">/</span><span class="mi">1024</span><span class="o">/</span><span class="mi">1024</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Log Used (Meg)&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">total_log_available</span><span class="o">/</span><span class="mi">1024</span><span class="o">/</span><span class="mi">1024</span><span class="p">)</span>
+<span class="n">as</span> <span class="s">&quot;Log Space Free (Meg)&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">((</span><span class="kt">float</span><span class="p">(</span><span class="n">total_log_used</span><span class="p">)</span> <span class="o">/</span>
+<span class="kt">float</span><span class="p">(</span><span class="n">total_log_used</span><span class="o">+</span><span class="n">total_log_available</span><span class="p">))</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span>
+<span class="n">as</span> <span class="s">&quot;Pct Used&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">tot_log_used_top</span><span class="o">/</span><span class="mi">1024</span><span class="o">/</span><span class="mi">1024</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Max Log Used (Meg)&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">sec_log_used_top</span><span class="o">/</span><span class="mi">1024</span><span class="o">/</span><span class="mi">1024</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Max Sec. Used (Meg)&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">sec_logs_allocated</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Secondaries&quot;</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapdb</span> <span class="p">;</span>
+</pre></div>
+
+
+<div class="hlcode"><pre><span class="n">SELECT</span>
+<span class="n">TOTAL_LOG_USED</span> <span class="n">AS</span> <span class="n">LOG_USED</span><span class="p">,</span>
+<span class="n">TOTAL_LOG_AVAILABLE</span> <span class="n">as</span> <span class="n">LOG_REMAINING</span> <span class="p">,</span>
+<span class="n">SEC_LOGS_ALLOCATED</span> <span class="n">AS</span> <span class="n">SEC_LOGFILES</span>
+<span class="n">FROM</span> <span class="n">SYSIBMADM</span><span class="p">.</span><span class="n">SNAPDB</span> <span class="p">;</span>
+</pre></div>
+
+
+<h2 id="oldest-transaction-holding-log-space">Oldest transaction holding log space</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">select</span> <span class="n">substr</span><span class="p">(</span><span class="n">ai</span><span class="p">.</span><span class="n">appl_status</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">20</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Status&quot;</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">ai</span><span class="p">.</span><span class="n">primary_auth_id</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Authid&quot;</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">ai</span><span class="p">.</span><span class="n">appl_name</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">15</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Appl_Name&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">ap</span><span class="p">.</span><span class="n">UOW_LOG_SPACE_USED</span><span class="o">/</span><span class="mi">1024</span><span class="o">/</span><span class="mi">1024</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Log_Used_Mge&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">(</span><span class="n">ap</span><span class="p">.</span><span class="n">appl_idle_time</span><span class="o">/</span><span class="mi">60</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Idle_for_min&quot;</span><span class="p">,</span>
+<span class="n">ap</span><span class="p">.</span><span class="n">appl_con_time</span> <span class="n">as</span> <span class="s">&quot;Connected_Since&quot;</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapdb</span> <span class="n">db</span><span class="p">,</span>
+<span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapappl</span> <span class="n">ap</span><span class="p">,</span>
+<span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapappl_info</span> <span class="n">ai</span>
+<span class="n">where</span> <span class="n">ai</span><span class="p">.</span><span class="n">agent_id</span> <span class="o">=</span> <span class="n">db</span><span class="p">.</span><span class="n">APPL_ID_OLDEST_XACT</span>
+<span class="n">and</span> <span class="n">ap</span><span class="p">.</span><span class="n">agent_id</span> <span class="o">=</span> <span class="n">ai</span><span class="p">.</span><span class="n">agent_id</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<h2 id="tablespace-size">Tablespace size</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">select</span> <span class="n">substr</span><span class="p">(</span><span class="n">tbsp_name</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">30</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;tbsname&quot;</span><span class="p">,</span>
+<span class="n">tbsp_type</span> <span class="n">as</span> <span class="s">&quot;Type&quot;</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">tbsp_state</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">20</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Status&quot;</span><span class="p">,</span>
+<span class="p">(</span><span class="n">tbsp_total_size_kb</span> <span class="o">/</span> <span class="mi">1024</span> <span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Size_in_Meg&quot;</span><span class="p">,</span>
+<span class="n">smallint</span><span class="p">((</span><span class="kt">float</span><span class="p">(</span><span class="n">tbsp_free_size_kb</span><span class="p">)</span> <span class="o">/</span> <span class="kt">float</span><span class="p">(</span><span class="n">tbsp_total_size_kb</span><span class="p">))</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Free_Space_in_percent&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">((</span><span class="n">tbsp_free_size_kb</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1024</span> <span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Free_Space_in_Meg&quot;</span><span class="p">,</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">tbsp_utilization</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<div class="hlcode"><pre><span class="n">select</span> <span class="n">substr</span><span class="p">(</span><span class="n">tbsp_name</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">30</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Tablespace Name&quot;</span><span class="p">,</span> <span class="n">tbsp_type</span> <span class="n">as</span>
+<span class="s">&quot;Type&quot;</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">tbsp_state</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">20</span><span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Status&quot;</span><span class="p">,</span>
+<span class="p">(</span><span class="n">tbsp_total_size_kb</span> <span class="o">/</span> <span class="mi">1024</span> <span class="p">)</span> <span class="n">as</span> <span class="s">&quot;Size (Meg)&quot;</span><span class="p">,</span>
+<span class="n">smallint</span><span class="p">((</span><span class="kt">float</span><span class="p">(</span><span class="n">tbsp_free_size_kb</span><span class="p">)</span> <span class="o">/</span>
+<span class="kt">float</span><span class="p">(</span><span class="n">tbsp_total_size_kb</span><span class="p">))</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span>
+<span class="n">as</span> <span class="s">&quot;% Free Space&quot;</span><span class="p">,</span>
+<span class="kt">int</span><span class="p">((</span><span class="n">tbsp_free_size_kb</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1024</span> <span class="p">)</span>
+<span class="n">as</span> <span class="s">&quot;Meg Free Space&quot;</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">tbsp_utilization</span>
+<span class="p">;</span>
+</pre></div>
+
+
+<h2 id="db-storage-path">DB storage path</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;</span>
+<span class="n">select</span> <span class="n">substr</span><span class="p">(</span><span class="n">type</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">20</span><span class="p">)</span> <span class="n">as</span> <span class="n">type</span><span class="p">,</span>
+<span class="n">substr</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">50</span><span class="p">)</span> <span class="n">as</span> <span class="n">path</span>
+<span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">dbpaths</span>
+<span class="n">order</span> <span class="n">by</span> <span class="n">type</span>
+<span class="s">&quot;</span>
+</pre></div>
+
+
+<h2 id="get-system-information">get system information</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;select * from table(sysproc.env_get_sys_info()) as systeminfo&quot;</span>
+<span class="n">db2</span> <span class="s">&quot;select * from table(sysproc.env_get_inst_info()) as instanceinfo&quot;</span>
+<span class="n">db2</span> <span class="s">&quot;select * from table(sysproc.env_get_prod_info()) as prodinfo&quot;</span>
+</pre></div>
+
+
+<h2 id="get-container">get container</h2>
+<div class="hlcode"><pre><span class="n">select</span> <span class="n">substr</span><span class="p">(</span><span class="n">TBSP_NAME</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">16</span><span class="p">)</span> <span class="n">as</span> <span class="n">TBS_NAME</span><span class="p">,</span> <span class="n">total_pages</span><span class="p">,</span> <span class="n">substr</span><span class="p">(</span><span class="n">CONTAINER_NAME</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">60</span><span class="p">)</span> <span class="n">as</span>
+<span class="n">Container_name</span> <span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapcontainer</span> <span class="n">order</span> <span class="n">by</span> <span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">;</span>
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

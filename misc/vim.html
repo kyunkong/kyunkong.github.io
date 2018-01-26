@@ -1,0 +1,408 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>VIM Tutorial - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#misc">misc</a>
+    &nbsp;&#187;&nbsp;VIM Tutorial
+    <span class="updated">Last Update: &nbsp;
+    2018-01-15 17:58:06
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#install-vim-from-source-code">install vim from source code</a></li>
+<li><a href="#import-files-need-to-be-synced">Import files need to be synced</a></li>
+<li><a href="#common-operations">Common operations</a></li>
+<li><a href="#find-the-vim-history-command">find the vim history command</a></li>
+<li><a href="#spell-check-in-vim">Spell check in vim</a></li>
+<li><a href="#exit-buffers">exit buffers</a></li>
+<li><a href="#how-to-delete-the-blank-of-space-at-the-end-of-line">How to delete the blank of space at the end of line</a></li>
+<li><a href="#for-blogging-tabular-data">For blogging tabular data</a></li>
+<li><a href="#change-column-of-test">Change column of test</a></li>
+<li><a href="#change-column-in-tag">Change column in tag</a></li>
+<li><a href="#folding-manually">Folding manually</a></li>
+<li><a href="#high-frequency-and-efficiency">High frequency and efficiency</a><ul>
+<li><a href="#combination-keyboard">Combination keyboard</a></li>
+</ul>
+</li>
+<li><a href="#command-mode">Command mode</a><ul>
+<li><a href="#split-window">Split window</a></li>
+<li><a href="#my-vim-window-setting">My vim window setting</a></li>
+<li><a href="#_1">移动窗口</a><ul>
+<li><a href="#tab">Tab</a></li>
+<li><a href="#modify-default-highlight-filetype">Modify default highlight filetype</a></li>
+<li><a href="#seeking-for-help">Seeking for help</a></li>
+<li><a href="#case-sensitive-in-search-mode">Case sensitive in search mode</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#normal-mode">Normal mode</a><ul>
+<li><a href="#join-two-lines-together">Join two lines together</a></li>
+<li><a href="#change-case">Change case</a></li>
+<li><a href="#redo">redo</a></li>
+<li><a href="#undo-and-undo-a-line">undo and undo a line</a></li>
+<li><a href="#moving-to-a-character">moving to a character</a></li>
+<li><a href="#jump-half-a-screen">jump half a screen</a></li>
+<li><a href="#changedelete-wordslines">change/delete words/lines</a></li>
+</ul>
+</li>
+<li><a href="#insert-mode">Insert mode</a><ul>
+<li><a href="#number-item-list">number item list</a></li>
+<li><a href="#edit-the-content-of-the-macro">Edit the content of the Macro</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<h3 id="install-vim-from-source-code">install vim from source code</h3>
+<ul>
+<li>remove old vim version</li>
+</ul>
+<div class="hlcode"><pre>sudo apt<span class="p">-</span><span class="k">get</span> remove <span class="k">vim</span> <span class="k">vim</span><span class="p">-</span>runtime <span class="k">gvim</span>
+<span class="k">cd</span> <span class="p">~</span>
+git clone https:<span class="sr">//</span>github.<span class="k">com</span><span class="sr">/vim/</span><span class="k">vim</span>.git
+<span class="k">cd</span> <span class="k">vim</span>
+.<span class="sr">/configure --with-features=huge --enable-multibyte --enable-rubyinterp --enable-pythoninterp --with-python-config-dir=/</span>usr<span class="sr">/lib/</span>python2.<span class="m">7</span><span class="sr">/config-x86_64-linux-gnu --enable-perlinterp --enable-luainterp --enable-gui=gtk2 --enable-cscope --enable-python3interp --prefix=/</span>usr 
+<span class="k">make</span> VIMRUNTIMEDIR<span class="p">=</span><span class="sr">/usr/</span>share<span class="sr">/vim/</span>vim74
+sudo <span class="k">make</span> install
+</pre></div>
+
+
+<div class="hlcode"><pre>yum install <span class="p">-</span><span class="k">y</span> python<span class="p">-</span>devel <span class="k">python3</span><span class="p">-</span>devel <span class="k">ruby</span><span class="p">-</span>devel <span class="k">lua</span><span class="p">-</span>devel libX11<span class="p">-</span>devel gtk<span class="p">-</span>devel gtk2<span class="p">-</span>devel gtk3<span class="p">-</span>devel ncurses<span class="p">-</span>devel
+git clone git@github.<span class="k">com</span>:<span class="k">vim</span>/<span class="k">vim</span>.git
+<span class="k">cd</span> <span class="k">vim</span>/
+.<span class="sr">/configure --with-features=huge --enable-pythoninterp --enable-rubyinterp --enable-luainterp --enable-perlinterp --with-python-config-dir=/</span>usr<span class="sr">/lib/</span>python2.<span class="m">7</span><span class="sr">/config/</span> <span class="p">--</span>enable<span class="p">-</span><span class="k">gui</span><span class="p">=</span>gtk2 <span class="p">--</span>enable<span class="p">-</span><span class="k">cscope</span> <span class="p">--</span>prefix<span class="p">=</span>/usr
+<span class="k">make</span>
+<span class="k">make</span> install
+sudo apt<span class="p">-</span><span class="k">get</span> install libncurses5<span class="p">-</span>dev libgnome2<span class="p">-</span>dev libgnomeui<span class="p">-</span>dev \
+libgtk2.<span class="m">0</span><span class="p">-</span>dev libatk1.<span class="m">0</span><span class="p">-</span>dev libbonoboui2<span class="p">-</span>dev \
+libcairo2<span class="p">-</span>dev libx11<span class="p">-</span>dev libxpm<span class="p">-</span>dev libxt<span class="p">-</span>dev python<span class="p">-</span>dev \
+<span class="k">ruby</span><span class="p">-</span>dev git
+
+sudo yum install <span class="p">-</span><span class="k">y</span> <span class="k">ruby</span> <span class="k">ruby</span><span class="p">-</span>devel <span class="k">lua</span> <span class="k">lua</span><span class="p">-</span>devel luajit \
+    luajit<span class="p">-</span>devel ctags git python python<span class="p">-</span>devel \
+    <span class="k">python3</span> <span class="k">python3</span><span class="p">-</span>devel <span class="k">tcl</span><span class="p">-</span>devel \
+    perl perl<span class="p">-</span>devel perl<span class="p">-</span>ExtUtils<span class="p">-</span>ParseXS \
+    perl<span class="p">-</span>ExtUtils<span class="p">-</span>XSpp perl<span class="p">-</span>ExtUtils<span class="p">-</span>CBuilder \
+    perl<span class="p">-</span>ExtUtils<span class="p">-</span>Embed
+
+
+
+<span class="p">--</span>enable<span class="p">-</span>pythoninterp、<span class="p">--</span>enable<span class="p">-</span>rubyinterp、<span class="p">--</span>enable<span class="p">-</span>perlinterp、<span class="p">--</span>enable<span class="p">-</span>luainterp 
+supprot python<span class="p">,</span><span class="k">ruby</span><span class="p">,</span>perl<span class="p">,</span><span class="k">lua</span> and <span class="k">so</span> <span class="k">on</span>. 
+<span class="p">--</span>enable<span class="p">-</span><span class="k">gui</span><span class="p">=</span>gtk2
+using gnome2 style <span class="k">gvim</span>
+<span class="p">--</span>with<span class="p">-</span>python<span class="p">-</span>config<span class="p">-</span><span class="nb">dir</span><span class="p">=</span><span class="sr">/usr/</span>lib<span class="sr">/python2.7/</span>config/ 
+specify python location
+</pre></div>
+
+
+<h1 id="import-files-need-to-be-synced">Import files need to be synced</h1>
+<ol>
+<li>~/.inputrc #define the vi-mode in command line</li>
+<li>~/.vimrc   #no need to explain </li>
+<li>~/.bashrc  #user environments</li>
+</ol>
+<h1 id="common-operations">Common operations</h1>
+<p>x  delete character under the cursor (short for "dl")<br />
+X  delete character before the cursor (short for "dh")<br />
+D  delete from cursor to end of line (short for "d$")<br />
+dw delete from cursor to next start of word<br />
+db delete from cursor to previous start of word<br />
+diw   delete word under the cursor (excluding white space)<br />
+daw   delete word under the cursor (including white space)<br />
+dG delete until the end of the file<br />
+dgg   delete until the start of the file<br />
+L   move the cursor to the bottom of the screen<br />
+H   move the cursor to the top of the screen<br />
+M   move the cursor to the middle of the screen<br />
+C-g move the screen down but remain the cursor<br />
+C-d down the cursor half of the screen a time<br />
+C-u up the cursor half of the screen a time</p>
+<h1 id="find-the-vim-history-command">find the vim history command</h1>
+<p>q: find and edit it </p>
+<h1 id="spell-check-in-vim">Spell check in vim</h1>
+<dl>
+<dd>set spell<br />
+[s: jump to the mis-spell words<br />
+z=: fix mis-spell by auto-recommended words<br />
+1z=:    automatically fix mis-spell<br />
+noremap <leader>sp :normal! mm[s1z=`m<cr></dd>
+</dl>
+<h1 id="exit-buffers">exit buffers</h1>
+<p>:bd exit current buffer without saving<br />
+:bw exit current buffer with saving<br />
+:bn jump to next buffer </p>
+<h1 id="how-to-delete-the-blank-of-space-at-the-end-of-line">How to delete the blank of space at the end of line</h1>
+<p>g_   last character on line</p>
+<p>we can use marcro to record the duplication of delete space end of line: <br />
+this is a test line<br />
+this is another test line</p>
+<p>qag_lDq <br />
+@a</p>
+<p>or just key mapping in normal mode<br />
+nmap <leader><space> g_lD</p>
+<h1 id="for-blogging-tabular-data">For blogging tabular data</h1>
+<table>
+<thead>
+<tr>
+<th>C1</th>
+<th>C2</th>
+<th>C3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>t1t1t1t1</td>
+<td>tetetetet</td>
+<td>tetetetetet</td>
+</tr>
+<tr>
+<td>ababab</td>
+<td>dbdbdb</td>
+<td>cd cdcdcdcdcd</td>
+</tr>
+<tr>
+<td>* Operations: Assume cursor located at first line 0 character</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>&gt; 1. yyp             Copy the first line and paste to below line</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>&gt; 2. V r-               Select the line which just pasted, and replace it to "-"</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>&gt; 3. k C-v 3j I</td>
+<td><Esc>       Back to prev line, change to the block visual mode, insert "</td>
+<td>"</td>
+</tr>
+<tr>
+<td>&gt; 4. C-v 3j r</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>&gt; 5. C-v 3j r</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>&gt; 6. C-v 3j $A</td>
+<td>Move the first line end, append</td>
+<td>to end</td>
+</tr>
+</tbody>
+</table>
+<h1 id="change-column-of-test">Change column of test</h1>
+<p>li.one         a{ background-image: url('/images/sprite.png'); }<br />
+li.two         a{ background-image: url('/images/sprite.png'); }<br />
+li.three       a{ background-image: url('/images/sprite.png'); }<br />
+   * Operations: change all three images to contens</p>
+<blockquote>
+<ol>
+<li>Located in the begining of images word</li>
+<li>C-v 2je c<Esc>  and change to contents</li>
+</ol>
+</blockquote>
+<h1 id="change-column-in-tag">Change column in tag</h1>
+<p><a href="#">one</a><br />
+<a href="#">two</a><br />
+<a href="#">three</a><br />
+   * Operations: change the word to uppercase</p>
+<blockquote>
+<p>gUit j. j.</p>
+</blockquote>
+<h1 id="folding-manually">Folding manually</h1>
+<p>zfap    Manually folding the current cursor<br />
+zo Open the folding lines<br />
+zc Close the folding</p>
+<h1 id="high-frequency-and-efficiency">High frequency and efficiency</h1>
+<div class="hlcode"><pre>   <span class="o">&gt;</span> <span class="n">yy</span> <span class="n">Copy</span> <span class="n">a</span> <span class="n">line</span> 
+   <span class="o">&gt;</span> <span class="n">yl</span> <span class="n">Copy</span> <span class="n">a</span> <span class="n">charater</span>
+   <span class="o">&gt;</span> <span class="n">yw</span> <span class="n">Copy</span> <span class="n">a</span> <span class="n">word</span><span class="p">,</span> <span class="n">this</span> <span class="n">action</span> <span class="n">is</span> <span class="n">copy</span> <span class="n">the</span> <span class="n">word</span> <span class="n">from</span> <span class="n">cursor</span> <span class="n">to</span> <span class="n">end</span> <span class="n">of</span> <span class="n">word</span><span class="p">,</span> <span class="n">not</span> <span class="n">an</span> <span class="n">entir</span> <span class="n">word</span>
+   <span class="o">&gt;</span> <span class="n">yaw</span> <span class="n">Copy</span> <span class="n">a</span> <span class="n">whole</span> <span class="n">word</span> 
+   <span class="o">&gt;</span> <span class="n">p</span> <span class="n">Paste</span> <span class="n">the</span> <span class="n">copy</span> <span class="n">content</span>
+    <span class="o">*</span> <span class="n">cc</span> <span class="n">Change</span> <span class="n">a</span> <span class="n">whole</span> <span class="n">line</span><span class="p">,</span> <span class="n">that</span> <span class="n">is</span> <span class="n">delete</span> <span class="n">the</span> <span class="n">line</span><span class="p">,</span> <span class="n">and</span> <span class="n">insert</span> <span class="n">it</span><span class="p">.</span>  
+    <span class="o">*</span> <span class="n">dd</span> <span class="n">Delete</span> <span class="n">a</span> <span class="n">line</span> 
+    <span class="o">*</span> <span class="n">c</span> <span class="n">means</span> <span class="n">change</span><span class="p">,</span> <span class="n">d</span> <span class="n">means</span> <span class="n">delete</span><span class="p">,</span> <span class="n">y</span> <span class="n">measn</span> <span class="n">yank</span><span class="p">.</span> <span class="n">The</span> <span class="n">usages</span> <span class="n">of</span> <span class="n">these</span> <span class="n">three</span> <span class="n">charater</span> <span class="n">is</span> <span class="n">the</span> <span class="n">same</span><span class="p">.</span> <span class="n">For</span> <span class="n">example</span><span class="p">,</span> <span class="n">there</span> <span class="n">are</span> <span class="n">something</span> <span class="n">in</span> <span class="n">the</span> <span class="n">brackets</span><span class="p">,</span> <span class="n">such</span> <span class="n">as</span> <span class="p">(</span><span class="n">some</span> <span class="n">thing</span> <span class="n">need</span> <span class="n">to</span> <span class="n">change</span><span class="p">).</span> 
+   <span class="o">&gt;</span> <span class="n">yi</span><span class="p">(</span> <span class="n">Will</span> <span class="n">copy</span> <span class="n">the</span> <span class="s">&quot;some thing need to change&quot;</span><span class="p">.</span> <span class="n">ci</span><span class="p">(</span> <span class="n">will</span> <span class="n">change</span> <span class="n">the</span> <span class="n">strings</span> <span class="n">inside</span> <span class="n">the</span> <span class="n">brackets</span><span class="p">,</span> <span class="n">and</span> <span class="n">di</span><span class="p">(</span> <span class="n">will</span> <span class="n">delete</span> <span class="n">the</span> <span class="n">strings</span><span class="p">.</span> 
+    <span class="o">*</span> <span class="n">Trigger</span> <span class="n">matrics</span>
+    <span class="o">|</span><span class="n">Trigger</span><span class="o">|</span><span class="n">Effect</span><span class="o">|</span>
+    <span class="o">|----|----|</span>
+    <span class="o">|</span><span class="n">c</span>   <span class="o">|</span> <span class="n">Change</span><span class="o">|</span>
+    <span class="o">|</span><span class="n">d</span>   <span class="o">|</span> <span class="n">Delete</span><span class="o">|</span>
+    <span class="o">|</span><span class="n">y</span>   <span class="o">|</span> <span class="n">Yank</span> <span class="n">into</span> <span class="k">register</span><span class="o">|</span>
+    <span class="o">|</span><span class="n">g</span><span class="o">~</span>  <span class="o">|</span> <span class="n">Swap</span> <span class="k">case</span><span class="o">|</span>
+    <span class="o">|</span><span class="n">gu</span>  <span class="o">|</span> <span class="n">Make</span> <span class="n">lowercase</span><span class="o">|</span>
+    <span class="o">|</span><span class="n">gU</span>  <span class="o">|</span> <span class="n">Make</span> <span class="n">uppercase</span><span class="o">|</span>
+    <span class="o">|&gt;</span>   <span class="o">|</span> <span class="n">Shift</span> <span class="n">right</span><span class="o">|</span>
+    <span class="o">|&lt;</span>   <span class="o">|</span> <span class="n">Shift</span> <span class="n">left</span><span class="o">|</span>
+    <span class="o">|=</span>   <span class="o">|</span> <span class="n">Autoindent</span><span class="o">|</span>
+    <span class="o">*</span> <span class="p">.</span> <span class="p">(</span><span class="n">dot</span><span class="p">)</span> <span class="n">Repeat</span> <span class="n">last</span> <span class="n">change</span>
+    <span class="o">*</span> <span class="n">I</span><span class="o">/</span><span class="n">i</span> <span class="n">UPPERCASE</span> <span class="n">insert</span> <span class="n">before</span> <span class="n">a</span> <span class="n">line</span><span class="p">,</span> <span class="n">but</span> <span class="n">ignore</span> <span class="n">space</span><span class="p">.</span> <span class="n">For</span> <span class="n">example</span><span class="p">,</span> <span class="k">if</span> <span class="n">I</span> <span class="n">push</span> <span class="n">I</span> <span class="n">in</span> <span class="n">this</span> <span class="n">line</span><span class="p">,</span> <span class="n">it</span> <span class="n">will</span> <span class="n">start</span> <span class="n">insertion</span> <span class="n">at</span> <span class="n">the</span> <span class="n">begining</span> <span class="n">of</span> <span class="n">star</span> <span class="n">character</span><span class="p">.</span> <span class="n">While</span> <span class="n">i</span> <span class="n">insert</span> <span class="n">in</span> <span class="n">front</span> <span class="n">of</span> <span class="n">the</span> <span class="n">cursor</span><span class="p">.</span> 
+    <span class="o">*</span> <span class="n">A</span><span class="o">/</span><span class="n">a</span> <span class="n">Means</span> <span class="n">append</span><span class="p">,</span> <span class="n">UPPERCASE</span> <span class="n">append</span> <span class="n">append</span> <span class="n">the</span> <span class="n">end</span> <span class="n">of</span> <span class="n">line</span><span class="p">.</span> <span class="n">While</span> <span class="n">a</span> <span class="n">insert</span> <span class="n">the</span> <span class="n">end</span> <span class="n">of</span> <span class="n">cursor</span><span class="p">.</span> 
+    <span class="o">*</span> <span class="n">O</span><span class="o">/</span><span class="n">o</span> <span class="n">Means</span> <span class="n">OPEN</span><span class="p">,</span> <span class="n">UPPERCASE</span> <span class="n">open</span> <span class="n">a</span> <span class="n">new</span> <span class="n">line</span> <span class="n">above</span> <span class="n">the</span> <span class="n">current</span> <span class="n">cursor</span> <span class="n">position</span><span class="p">,</span> <span class="k">while</span> <span class="n">o</span> <span class="n">open</span> <span class="n">below</span> <span class="n">of</span> <span class="n">the</span> <span class="n">line</span><span class="p">.</span>  
+    <span class="o">*</span> <span class="n">S</span><span class="o">/</span><span class="n">s</span> <span class="n">UPPERCASE</span> <span class="n">S</span> <span class="n">will</span> <span class="n">delete</span> <span class="n">the</span> <span class="n">whole</span> <span class="n">line</span> <span class="n">and</span> <span class="n">insert</span> <span class="n">something</span> <span class="n">in</span> <span class="n">it</span><span class="p">,</span> <span class="n">just</span> <span class="n">equals</span> <span class="n">cc</span> <span class="n">triggers</span><span class="p">.</span> <span class="n">equals</span> <span class="n">cl</span><span class="p">.</span> 
+    <span class="o">*</span> <span class="p">;</span> <span class="p">(</span><span class="n">semicolon</span><span class="p">)</span> <span class="n">this</span> <span class="n">trigger</span> <span class="n">works</span> <span class="n">when</span> <span class="n">f</span> <span class="n">find</span> <span class="n">some</span> <span class="n">charaters</span><span class="p">,</span> <span class="n">press</span> <span class="p">;</span> <span class="n">will</span> <span class="n">find</span> <span class="n">the</span> <span class="n">next</span> <span class="n">character</span><span class="p">.</span> <span class="n">and</span> <span class="n">press</span> <span class="p">,</span> <span class="n">will</span> <span class="n">find</span> <span class="n">the</span> <span class="n">prev</span> <span class="n">ones</span><span class="p">.</span> <span class="n">Below</span> <span class="n">is</span> <span class="n">the</span> <span class="n">example</span> <span class="n">to</span> <span class="n">explain</span> <span class="s">&quot;;&quot;</span> <span class="n">and</span> <span class="s">&quot;,&quot;</span>
+   <span class="o">&gt;</span> <span class="n">foo</span><span class="o">=</span><span class="n">arg1</span><span class="o">+</span><span class="n">arg2</span><span class="o">+</span><span class="n">arg3</span><span class="p">,</span> <span class="n">and</span> <span class="n">I</span> <span class="n">want</span> <span class="n">to</span> <span class="n">add</span> <span class="n">space</span> <span class="n">before</span> <span class="n">and</span> <span class="n">behind</span> <span class="n">the</span> <span class="n">plus</span><span class="p">,</span> <span class="n">such</span> <span class="n">as</span> <span class="n">arg1</span> <span class="o">+</span> <span class="n">arg2</span> <span class="o">+</span> <span class="n">arg3</span><span class="p">.</span> 
+   <span class="o">&gt;</span> <span class="n">Solution</span><span class="o">:</span> <span class="n">f</span><span class="o">+</span> <span class="n">then</span> <span class="n">sSPACE</span><span class="o">+</span><span class="n">SPACE</span> <span class="n">then</span> <span class="n">reture</span> <span class="n">to</span> <span class="n">normal</span> <span class="n">mode</span><span class="p">,</span> <span class="n">press</span> <span class="p">;</span> <span class="n">find</span> <span class="n">the</span> <span class="n">next</span> <span class="n">one</span><span class="p">,</span> <span class="n">and</span> <span class="n">then</span> <span class="n">press</span> <span class="p">.</span> 
+</pre></div>
+
+
+<h2 id="combination-keyboard">Combination keyboard</h2>
+<ul>
+<li>C-d Change the line from cursor to end of line</li>
+</ul>
+<h1 id="command-mode">Command mode</h1>
+<h4 id="split-window">Split window</h4>
+<p>:split split horizontal window, using Ctrl+w to jump between window. <br />
+:close close the split window<br />
+:only close all other windows</p>
+<p>:vsplit split vertical window </p>
+<h3 id="my-vim-window-setting">My vim window setting</h3>
+<p><strong>:sp filename</strong>: open a file horizontal window<br />
+<strong>:vsp filename</strong>: open a file vertical window<br />
+<strong><c-h/j/k/l></strong>: Move the cursor to the other window<br />
+<strong><c-w>n+/-</strong>: Adjust current window vertically, n stands for number<br />
+<strong><c-w>n&gt;/&lt;</strong>: Adjust current window horizontal, n stands for number</p>
+<h3 id="_1">移动窗口</h3>
+<p><strong><c-w>r</strong>: 向右或者向下交换窗口, <strong><c-w>R</strong>则相反</p>
+<h4 id="tab">Tab</h4>
+<p><strong>gt</strong>: Switch the tab<br />
+<strong>tabnew filename</strong>: open a file in a new tab<br />
+<strong>tabc</strong>: Close current tab</p>
+<h4 id="modify-default-highlight-filetype">Modify default highlight filetype</h4>
+<p>set filetype=ruby</p>
+<h4 id="seeking-for-help">Seeking for help</h4>
+<p>:help<br />
+If using help, you can jump to hyperlink by using Ctrl+], which means jump to tag, and back to the preceding place by Ctrl+O, O is capital alphabet. Type :help ctrl+O for more information</p>
+<h4 id="case-sensitive-in-search-mode">Case sensitive in search mode</h4>
+<p>:set ignorecase<br />
+:set noignorecase</p>
+<h1 id="normal-mode">Normal mode</h1>
+<h4 id="join-two-lines-together">Join two lines together</h4>
+<p>J</p>
+<h4 id="change-case">Change case</h4>
+<p>gUw changing the word into upcase behand the cursor<br />
+guw changing the word into lowercase behand the cursor</p>
+<h4 id="redo">redo</h4>
+<p>ctrl+r</p>
+<h4 id="undo-and-undo-a-line">undo and undo a line</h4>
+<p>u for undo, u for undo a line.</p>
+<h4 id="moving-to-a-character">moving to a character</h4>
+<p>fa search forward in the line for the single character a. fa backward in the line of a character.</p>
+<h4 id="jump-half-a-screen">jump half a screen</h4>
+<p>ctrl+d scrolling down half a screen<br />
+ctrl+u scrolling up half a screen. these two commands with cursor company.</p>
+<p>ctrl+e scrolling up once a line and keep the cursor stay in where you current are. <br />
+ctrl+y vice verse </p>
+<p>ctrl+f pagedown <br />
+ctrl+b pageup</p>
+<p>zz put the current cursor in the center of the screen <br />
+zt put the current cursor in the top <br />
+zb put the current cursor at the bottom</p>
+<h4 id="changedelete-wordslines">change/delete words/lines</h4>
+<p>dd delete the whold line<br />
+dw delete the whold word<br />
+cc change the whole line<br />
+d2w delete 2 end of words <br />
+d2e delete 2 words<br />
+ci( change the words in the  round brackets<br />
+di( delete the words in the round breackets<br />
+D stands for d$<br />
+C stands for c$<br />
+s stands for cl, change one character<br />
+Ci stands for cc</p>
+<h1 id="insert-mode">Insert mode</h1>
+<blockquote>
+<p>finding what keys are mapping<br />
+:verbose map</p>
+</blockquote>
+<h3 id="number-item-list">number item list</h3>
+<p>My first line<br />
+My second line<br />
+My third line<br />
+My fourth line<br />
+My fifth line<br />
+My sixth line<br />
+My seventh line<br />
+My eighth line<br />
+My ninth line</p>
+<p>change above lines to </p>
+<p>1) My first line<br />
+2) My second line<br />
+3) My third line<br />
+4) My fourth line<br />
+5) My fifth line<br />
+6) My sixth line<br />
+7) My seventh line<br />
+8) My eighth line<br />
+9) My ninth line</p>
+<p>using :</p>
+<div class="hlcode"><pre><span class="p">:</span><span class="k">let</span> <span class="n">i</span><span class="o">=</span><span class="mi">1</span>
+<span class="nx">qa</span>
+<span class="nx">I</span><span class="o">&lt;</span><span class="nx">C</span><span class="na">-r</span><span class="o">&gt;=</span><span class="nx">i</span><span class="o">&lt;</span><span class="nx">cr</span><span class="o">&gt;</span><span class="p">)</span> <span class="o">&lt;</span><span class="nx">Esc</span><span class="o">&gt;</span>
+<span class="p">:</span><span class="k">let</span> <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="nx">q</span>
+<span class="nx">jVG</span>
+<span class="p">:</span><span class="nx">normal</span> <span class="p">@</span><span class="nx">a</span>
+</pre></div>
+
+
+<h3 id="edit-the-content-of-the-macro">Edit the content of the Macro</h3>
+<p>1.put a Macro into the document from register <br />
+:put a</p>
+<ol>
+<li>yank the Macro from the Document to register<br />
+"add</li>
+</ol>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

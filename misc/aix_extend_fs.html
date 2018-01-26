@@ -1,0 +1,153 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>Extending file system on AIX - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#misc">misc</a>
+    &nbsp;&#187;&nbsp;Extending file system on AIX
+    <span class="updated">Last Update: &nbsp;
+    2018-01-16 16:32:49
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#swap">一、扩展swap</a><ul>
+<li><a href="#14gbpp-256m16pp2pp14">1、扩展成4GB大小，每个PP 256M，即需要16个PP，原来有2个PP，加14个即可</a></li>
+</ul>
+</li>
+<li><a href="#vg">二、从原有vg中创建文件系统</a><ul>
+<li><a href="#1lv-ccopyvg">1、创建lv，-c表示copy，仅针对有做镜像的VG生效</a></li>
+<li><a href="#2">2、创建文件系统</a></li>
+<li><a href="#how-to-locate-hacmp-script">How to locate HACMP script</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<h1 id="swap">一、扩展swap</h1>
+<div class="hlcode"><pre><span class="cp"># lsps -a</span>
+<span class="n">Page</span> <span class="n">Space</span>      <span class="n">Physical</span> <span class="n">Volume</span>   <span class="n">Volume</span> <span class="n">Group</span> <span class="n">Size</span> <span class="o">%</span><span class="n">Used</span> <span class="n">Active</span>  <span class="n">Auto</span>  <span class="n">Type</span> <span class="n">Chksum</span>
+<span class="n">hd6</span>             <span class="n">hdisk0</span>            <span class="n">rootvg</span>         <span class="mi">512</span><span class="n">MB</span>     <span class="mi">2</span>   <span class="n">yes</span>   <span class="n">yes</span>    <span class="n">lv</span>     <span class="mi">0</span>
+<span class="cp"># lsvg rootvg</span>
+<span class="n">VOLUME</span> <span class="n">GROUP</span><span class="o">:</span>       <span class="n">rootvg</span>                   <span class="n">VG</span> <span class="n">IDENTIFIER</span><span class="o">:</span>  <span class="mo">00</span><span class="n">c224c600004c000000014ce545ae9f</span>
+<span class="n">VG</span> <span class="n">STATE</span><span class="o">:</span>           <span class="n">active</span>                   <span class="n">PP</span> <span class="n">SIZE</span><span class="o">:</span>        <span class="mi">256</span> <span class="n">megabyte</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">VG</span> <span class="n">PERMISSION</span><span class="o">:</span>      <span class="n">read</span><span class="o">/</span><span class="n">write</span>               <span class="n">TOTAL</span> <span class="n">PPs</span><span class="o">:</span>      <span class="mi">1092</span> <span class="p">(</span><span class="mi">279552</span> <span class="n">megabytes</span><span class="p">)</span>
+<span class="n">MAX</span> <span class="n">LVs</span><span class="o">:</span>            <span class="mi">256</span>                      <span class="n">FREE</span> <span class="n">PPs</span><span class="o">:</span>       <span class="mi">1044</span> <span class="p">(</span><span class="mi">267264</span> <span class="n">megabytes</span><span class="p">)</span>
+<span class="nl">LVs:</span>                <span class="mi">11</span>                       <span class="n">USED</span> <span class="n">PPs</span><span class="o">:</span>       <span class="mi">48</span> <span class="p">(</span><span class="mi">12288</span> <span class="n">megabytes</span><span class="p">)</span>
+<span class="n">OPEN</span> <span class="n">LVs</span><span class="o">:</span>           <span class="mi">10</span>                       <span class="n">QUORUM</span><span class="o">:</span>         <span class="mi">1</span> <span class="p">(</span><span class="n">Disabled</span><span class="p">)</span>
+<span class="n">TOTAL</span> <span class="n">PVs</span><span class="o">:</span>          <span class="mi">2</span>                        <span class="n">VG</span> <span class="n">DESCRIPTORS</span><span class="o">:</span> <span class="mi">3</span>
+<span class="n">STALE</span> <span class="n">PVs</span><span class="o">:</span>          <span class="mi">0</span>                        <span class="n">STALE</span> <span class="n">PPs</span><span class="o">:</span>      <span class="mi">0</span>
+<span class="n">ACTIVE</span> <span class="n">PVs</span><span class="o">:</span>         <span class="mi">2</span>                        <span class="n">AUTO</span> <span class="n">ON</span><span class="o">:</span>        <span class="n">yes</span>
+<span class="n">MAX</span> <span class="n">PPs</span> <span class="n">per</span> <span class="n">VG</span><span class="o">:</span>     <span class="mi">32512</span>                                     
+<span class="n">MAX</span> <span class="n">PPs</span> <span class="n">per</span> <span class="n">PV</span><span class="o">:</span>     <span class="mi">1016</span>                     <span class="n">MAX</span> <span class="n">PVs</span><span class="o">:</span>        <span class="mi">32</span>
+<span class="n">LTG</span> <span class="n">size</span> <span class="p">(</span><span class="n">Dynamic</span><span class="p">)</span><span class="o">:</span> <span class="mi">1024</span> <span class="n">kilobyte</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>         <span class="n">AUTO</span> <span class="n">SYNC</span><span class="o">:</span>      <span class="n">no</span>
+<span class="n">HOT</span> <span class="n">SPARE</span><span class="o">:</span>          <span class="n">no</span>                       <span class="n">BB</span> <span class="n">POLICY</span><span class="o">:</span>      <span class="n">relocatable</span> 
+<span class="n">PV</span> <span class="n">RESTRICTION</span><span class="o">:</span>     <span class="n">none</span>                     <span class="n">INFINITE</span> <span class="n">RETRY</span><span class="o">:</span> <span class="n">no</span>
+</pre></div>
+
+
+<h2 id="14gbpp-256m16pp2pp14">1、扩展成4GB大小，每个PP 256M，即需要16个PP，原来有2个PP，加14个即可</h2>
+<div class="hlcode"><pre><span class="cp">#chps -s 14 hd6</span>
+<span class="cp"># lsps -a</span>
+<span class="n">Page</span> <span class="n">Space</span>      <span class="n">Physical</span> <span class="n">Volume</span>   <span class="n">Volume</span> <span class="n">Group</span> <span class="n">Size</span> <span class="o">%</span><span class="n">Used</span> <span class="n">Active</span>  <span class="n">Auto</span>  <span class="n">Type</span> <span class="n">Chksum</span>
+<span class="n">hd6</span>             <span class="n">hdisk0</span>            <span class="n">rootvg</span>        <span class="mi">4096</span><span class="n">MB</span>     <span class="mi">1</span>   <span class="n">yes</span>   <span class="n">yes</span>    <span class="n">lv</span>     <span class="mi">0</span>
+</pre></div>
+
+
+<h1 id="vg">二、从原有vg中创建文件系统</h1>
+<h2 id="1lv-ccopyvg">1、创建lv，-c表示copy，仅针对有做镜像的VG生效</h2>
+<div class="hlcode"><pre><span class="p">[</span><span class="n">root</span><span class="err">@</span><span class="o">:/</span><span class="n">mnt</span><span class="o">/</span><span class="n">installp</span><span class="p">]</span><span class="err">#</span> <span class="n">mklv</span> <span class="o">-</span><span class="n">c</span> <span class="mi">2</span> <span class="o">-</span><span class="n">t</span> <span class="n">jfs2</span> <span class="o">-</span><span class="n">y</span> <span class="n">oralv</span> <span class="n">rootvg</span> <span class="mi">120</span> <span class="n">hdisk0</span> <span class="n">hdisk1</span>
+<span class="n">oralv</span>
+<span class="p">[</span><span class="n">root</span><span class="err">@</span><span class="o">:/</span><span class="n">mnt</span><span class="o">/</span><span class="n">installp</span><span class="p">]</span><span class="err">#</span> <span class="n">lsvg</span> <span class="o">-</span><span class="n">l</span> <span class="n">rootvg</span>
+<span class="nl">rootvg:</span>
+<span class="n">LV</span> <span class="n">NAME</span>             <span class="n">TYPE</span>       <span class="n">LPs</span>     <span class="n">PPs</span>     <span class="n">PVs</span>  <span class="n">LV</span> <span class="n">STATE</span>      <span class="n">MOUNT</span> <span class="n">POINT</span>
+<span class="n">hd5</span>                 <span class="n">boot</span>       <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">2</span>    <span class="n">closed</span><span class="o">/</span><span class="n">syncd</span>  <span class="n">N</span><span class="o">/</span><span class="n">A</span>
+<span class="n">hd6</span>                 <span class="n">paging</span>     <span class="mi">16</span>      <span class="mi">32</span>      <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="n">N</span><span class="o">/</span><span class="n">A</span>
+<span class="n">hd8</span>                 <span class="n">jfs2log</span>    <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="n">N</span><span class="o">/</span><span class="n">A</span>
+<span class="n">hd4</span>                 <span class="n">jfs2</span>       <span class="mi">2</span>       <span class="mi">4</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span>
+<span class="n">hd2</span>                 <span class="n">jfs2</span>       <span class="mi">10</span>      <span class="mi">20</span>      <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">usr</span>
+<span class="n">hd9var</span>              <span class="n">jfs2</span>       <span class="mi">2</span>       <span class="mi">4</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">var</span>
+<span class="n">hd3</span>                 <span class="n">jfs2</span>       <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">tmp</span>
+<span class="n">hd1</span>                 <span class="n">jfs2</span>       <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">home</span>
+<span class="n">hd10opt</span>             <span class="n">jfs2</span>       <span class="mi">2</span>       <span class="mi">4</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">opt</span>
+<span class="n">hd11admin</span>           <span class="n">jfs2</span>       <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">admin</span>
+<span class="n">livedump</span>            <span class="n">jfs2</span>       <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">adm</span><span class="o">/</span><span class="n">ras</span><span class="o">/</span><span class="n">livedump</span>
+<span class="n">oralv</span>               <span class="n">jfs2</span>       <span class="mi">120</span>     <span class="mi">240</span>     <span class="mi">2</span>    <span class="n">closed</span><span class="o">/</span><span class="n">syncd</span>  <span class="n">N</span><span class="o">/</span><span class="n">A</span>
+</pre></div>
+
+
+<h2 id="2">2、创建文件系统</h2>
+<div class="hlcode"><pre><span class="p">[</span><span class="n">root</span><span class="err">@</span><span class="o">:/</span><span class="n">mnt</span><span class="o">/</span><span class="n">installp</span><span class="p">]</span><span class="err">#</span> <span class="n">mkdir</span> <span class="o">/</span><span class="n">u01</span>
+<span class="p">[</span><span class="n">root</span><span class="err">@</span><span class="o">:/</span><span class="n">mnt</span><span class="o">/</span><span class="n">installp</span><span class="p">]</span><span class="err">#</span> <span class="n">crfs</span> <span class="o">-</span><span class="n">v</span> <span class="n">jfs2</span> <span class="o">-</span><span class="n">d</span> <span class="n">oralv</span> <span class="o">-</span><span class="n">A</span> <span class="n">yes</span> <span class="o">-</span><span class="n">m</span> <span class="o">/</span><span class="n">u01</span>
+<span class="n">File</span> <span class="n">system</span> <span class="n">created</span> <span class="n">successfully</span><span class="p">.</span>
+<span class="mi">31456116</span> <span class="n">kilobytes</span> <span class="n">total</span> <span class="n">disk</span> <span class="n">space</span><span class="p">.</span>
+<span class="n">New</span> <span class="n">File</span> <span class="n">System</span> <span class="n">size</span> <span class="n">is</span> <span class="mi">62914560</span>
+<span class="p">[</span><span class="n">root</span><span class="err">@</span><span class="o">:/</span><span class="n">mnt</span><span class="o">/</span><span class="n">installp</span><span class="p">]</span><span class="err">#</span> <span class="n">mount</span> <span class="o">/</span><span class="n">u01</span>
+<span class="p">[</span><span class="n">root</span><span class="err">@</span><span class="o">:/</span><span class="n">mnt</span><span class="o">/</span><span class="n">installp</span><span class="p">]</span><span class="err">#</span> <span class="n">lsvg</span> <span class="o">-</span><span class="n">l</span> <span class="n">rootvg</span>
+<span class="nl">rootvg:</span>
+<span class="n">LV</span> <span class="n">NAME</span>             <span class="n">TYPE</span>       <span class="n">LPs</span>     <span class="n">PPs</span>     <span class="n">PVs</span>  <span class="n">LV</span> <span class="n">STATE</span>      <span class="n">MOUNT</span> <span class="n">POINT</span>
+<span class="n">hd5</span>                 <span class="n">boot</span>       <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">2</span>    <span class="n">closed</span><span class="o">/</span><span class="n">syncd</span>  <span class="n">N</span><span class="o">/</span><span class="n">A</span>
+<span class="n">hd6</span>                 <span class="n">paging</span>     <span class="mi">16</span>      <span class="mi">32</span>      <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="n">N</span><span class="o">/</span><span class="n">A</span>
+<span class="n">hd8</span>                 <span class="n">jfs2log</span>    <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="n">N</span><span class="o">/</span><span class="n">A</span>
+<span class="n">hd4</span>                 <span class="n">jfs2</span>       <span class="mi">2</span>       <span class="mi">4</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span>
+<span class="n">hd2</span>                 <span class="n">jfs2</span>       <span class="mi">10</span>      <span class="mi">20</span>      <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">usr</span>
+<span class="n">hd9var</span>              <span class="n">jfs2</span>       <span class="mi">2</span>       <span class="mi">4</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">var</span>
+<span class="n">hd3</span>                 <span class="n">jfs2</span>       <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">tmp</span>
+<span class="n">hd1</span>                 <span class="n">jfs2</span>       <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">home</span>
+<span class="n">hd10opt</span>             <span class="n">jfs2</span>       <span class="mi">2</span>       <span class="mi">4</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">opt</span>
+<span class="n">hd11admin</span>           <span class="n">jfs2</span>       <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">admin</span>
+<span class="n">livedump</span>            <span class="n">jfs2</span>       <span class="mi">1</span>       <span class="mi">2</span>       <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">var</span><span class="o">/</span><span class="n">adm</span><span class="o">/</span><span class="n">ras</span><span class="o">/</span><span class="n">livedump</span>
+<span class="n">oralv</span>               <span class="n">jfs2</span>       <span class="mi">120</span>     <span class="mi">240</span>     <span class="mi">2</span>    <span class="n">open</span><span class="o">/</span><span class="n">syncd</span>    <span class="o">/</span><span class="n">u01</span>
+
+
+<span class="cp">## Extend the file system</span>
+<span class="n">chfs</span> <span class="o">-</span><span class="n">a</span> <span class="n">size</span><span class="o">=+</span><span class="mi">1</span><span class="n">G</span> <span class="o">/</span><span class="n">opt</span>
+</pre></div>
+
+
+<h2 id="how-to-locate-hacmp-script">How to locate HACMP script</h2>
+<div class="hlcode"><pre><span class="o">&gt;</span><span class="n">smitty</span> <span class="n">hacmp</span><span class="o">&gt;&gt;</span><span class="n">Cluster</span> <span class="n">Applications</span> <span class="n">and</span> <span class="n">Resources</span><span class="o">&gt;&gt;</span><span class="n">Resources</span><span class="o">&gt;&gt;</span><span class="n">Configure</span> <span class="n">user</span> <span class="n">Applications</span> <span class="p">(</span><span class="n">Scripts</span> <span class="n">and</span> <span class="n">Monitors</span><span class="p">)</span>
+<span class="o">&gt;&gt;</span><span class="n">Applications</span> <span class="n">control</span> <span class="n">Scripts</span><span class="o">&gt;&gt;</span><span class="n">Change</span><span class="o">/</span><span class="n">Show</span> <span class="n">Application</span> <span class="n">controller</span> <span class="n">scripts</span>
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>DB2 tablespace status - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#db2">db2</a>
+    &nbsp;&#187;&nbsp;DB2 tablespace status
+    <span class="updated">Last Update: &nbsp;
+    2018-01-16 17:25:42
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <h3 id="db2-tablespace-status">DB2 tablespace status</h3>
+<div class="hlcode"><pre><span class="mh">0x0</span>                 <span class="n">Normal</span>                                   
+<span class="mh">0x1</span>                 <span class="n">Quiesced</span><span class="o">:</span> <span class="n">SHARE</span>                          
+<span class="mh">0x2</span>                 <span class="n">Quiesced</span><span class="o">:</span> <span class="n">UPDATE</span>                        
+<span class="mh">0x4</span>                 <span class="n">Quiesced</span><span class="o">:</span> <span class="n">EXCLUSIVE</span>                     
+<span class="mh">0x8</span>                 <span class="n">Load</span> <span class="n">pending</span>                             
+<span class="mh">0x10</span>               <span class="n">Delete</span> <span class="n">pending</span>                           
+<span class="mh">0x20</span>               <span class="n">Backup</span> <span class="n">pending</span>                           
+<span class="mh">0x40</span>               <span class="n">Roll</span> <span class="n">forward</span> <span class="n">in</span> <span class="n">progress</span>                 
+<span class="mh">0x80</span>               <span class="n">Roll</span> <span class="n">forward</span> <span class="n">pending</span>                     
+<span class="mh">0x100</span>             <span class="n">Restore</span> <span class="n">pending</span>                          
+<span class="mh">0x100</span>             <span class="n">Recovery</span> <span class="n">pending</span> <span class="p">(</span><span class="n">not</span> <span class="n">used</span><span class="p">)</span>              
+<span class="mh">0x200</span>             <span class="n">Disable</span> <span class="n">pending</span>                          
+<span class="mh">0x400</span>             <span class="n">Reorg</span> <span class="n">in</span> <span class="n">progress</span>                        
+<span class="mh">0x800</span>             <span class="n">Backup</span> <span class="n">in</span> <span class="n">progress</span>                       
+<span class="mh">0x1000</span>           <span class="n">Storage</span> <span class="n">must</span> <span class="n">be</span> <span class="n">defined</span>                  
+<span class="mh">0x2000</span>           <span class="n">Restore</span> <span class="n">in</span> <span class="n">progress</span>                     
+<span class="mh">0x4000</span>           <span class="n">Offline</span> <span class="n">and</span> <span class="n">not</span> <span class="n">accessible</span>               
+<span class="mh">0x8000</span>           <span class="n">Drop</span> <span class="n">pending</span>                             
+<span class="mh">0x2000000</span>     <span class="n">Storage</span> <span class="n">may</span> <span class="n">be</span> <span class="n">defined</span>                  
+<span class="mh">0x4000000</span>     <span class="n">StorDef</span> <span class="n">is</span> <span class="n">in</span> <span class="err">&#39;</span><span class="n">final</span><span class="err">&#39;</span> <span class="n">state</span>              
+<span class="mh">0x8000000</span>     <span class="n">StorDef</span> <span class="n">was</span> <span class="n">changed</span> <span class="n">prior</span> <span class="n">to</span> <span class="n">rollforward</span>
+<span class="mh">0x10000000</span>   <span class="n">DMS</span> <span class="n">rebalancer</span> <span class="n">is</span> <span class="n">active</span>                 
+<span class="mh">0x20000000</span>   <span class="n">TBS</span> <span class="n">deletion</span> <span class="n">in</span> <span class="n">progress</span>                 
+<span class="mh">0x40000000</span>   <span class="n">TBS</span> <span class="n">creation</span> <span class="n">in</span> <span class="n">progress</span>                 
+<span class="mh">0x8</span>                 <span class="n">For</span> <span class="n">service</span> <span class="n">use</span> <span class="n">only</span>
+</pre></div>
+
+
+<h3 id="how-to-find-in-db2">how to find in DB2</h3>
+<div class="hlcode"><pre><span class="p">[</span><span class="n">db2v10i</span><span class="err">@</span><span class="n">hadr02</span> <span class="o">~</span><span class="p">]</span><span class="err">$</span> <span class="n">db2tbst</span> <span class="mh">0x8000</span>
+<span class="n">State</span> <span class="o">=</span> <span class="n">Drop</span> <span class="n">pending</span>
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

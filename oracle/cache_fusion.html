@@ -1,0 +1,93 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>Cache fusion - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#oracle">oracle</a>
+    &nbsp;&#187;&nbsp;Cache fusion
+    <span class="updated">Last Update: &nbsp;
+    2018-01-22 12:32:39
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#concept">concept</a><ul>
+<li><a href="#1-gcs-global-cache-service">1. GCS Global Cache Service</a></li>
+<li><a href="#2-ges-global-enqueue-service">2. GES Global Enqueue Service</a></li>
+<li><a href="#3-grd-global-resource-directory">3. GRD Global Resource Directory</a></li>
+</ul>
+</li>
+<li><a href="#background-processes">background processes</a><ul>
+<li><a href="#1-lms">1. LMS</a></li>
+<li><a href="#2-lmon">2. LMON</a></li>
+<li><a href="#3-lmd">3. LMD</a></li>
+<li><a href="#4-lck">4. LCK</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<h2 id="concept">concept</h2>
+<p>在rac中，服务器进程读取数据块过程中，为了保证数据一致性及高效性而采取的一种机制：<br />
+<em> 在各实例间共享由global locks协调和保护的资源<br />
+</em> 通过私有网络，任何一个实例都能访问到最新的master copy</p>
+<p>如实例A想更新一个数据，发现这个块的ownership是在B下，A发送请求给GCS，B从GCS接到请求，释放属主关系，通过通过私有网络将数据块发送给A。<br />
+在以上的操作中，并没有发生磁盘读写，实例间通过缓存融合的机制能高效的访问数据。但在多事务并发中，多个实例同时访问同一数据块的情况并不少见，因此引进以下几个服务以保证数据的可靠性。</p>
+<h3 id="1-gcs-global-cache-service">1. GCS Global Cache Service</h3>
+<p>主要负责实例间读写数据块的请求和共享</p>
+<h3 id="2-ges-global-enqueue-service">2. GES Global Enqueue Service</h3>
+<p>负责管理library locks，dictionary locks，事务锁及表锁等。</p>
+<h3 id="3-grd-global-resource-directory">3. GRD Global Resource Directory</h3>
+<p>跟踪记录资源属主关系和状态</p>
+<p>如在三节点rac中，实例A发出一个请求，GCS接收请求，通过GRD发现B是属主，再从GES发现当前最新块为实例C拥有，然后GCS通过LMS进程将对应块发送给A，并在A接收后，由GCS更新GRD的相关信息。</p>
+<h2 id="background-processes">background processes</h2>
+<h3 id="1-lms">1. LMS</h3>
+<p>负责节点间块的传输，构建CR块</p>
+<h3 id="2-lmon">2. LMON</h3>
+<p>管理GES中锁资源的分配</p>
+<h3 id="3-lmd">3. LMD</h3>
+<p>管理其他节点的远程锁请求</p>
+<h3 id="4-lck">4. LCK</h3>
+<p>负责管理非缓存融合相关的锁请求，如row cache或者library cache</p>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

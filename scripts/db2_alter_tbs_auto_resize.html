@@ -1,0 +1,91 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>Modify DB2 tablespace to auto resize - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#scripts">scripts</a>
+    &nbsp;&#187;&nbsp;Modify DB2 tablespace to auto resize
+    <span class="updated">Last Update: &nbsp;
+    2018-01-16 16:37:24
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="hlcode"><pre><span class="o">--</span> <span class="n">file</span> <span class="n">name</span><span class="o">:</span> <span class="n">Alter_Auto_Resize_TBS</span><span class="p">.</span><span class="n">ksh</span>
+<span class="o">--</span> <span class="n">Platform</span><span class="o">:</span> <span class="n">AIX</span> <span class="n">platform</span><span class="o">:</span>
+<span class="n">db2</span> <span class="n">list</span> <span class="n">db</span> <span class="n">directory</span><span class="o">|</span><span class="n">grep</span> <span class="o">-</span><span class="n">p</span> <span class="n">Indirect</span><span class="o">|</span><span class="n">grep</span> <span class="s">&quot;Database alias&quot;</span><span class="o">|</span><span class="n">cut</span> <span class="o">-</span><span class="n">d</span> <span class="s">&quot;=&quot;</span> <span class="o">-</span><span class="n">f</span> <span class="mi">2</span><span class="o">|</span> <span class="k">while</span> <span class="n">read</span> <span class="n">cur_db_name</span><span class="p">;</span> <span class="k">do</span>
+   <span class="n">echo</span> <span class="s">&quot;-- DB Name: $cur_db_name --&quot;</span>
+   <span class="n">db2pd</span> <span class="o">-</span><span class="n">db</span> <span class="err">$</span><span class="n">cur_db_name</span> <span class="o">-</span><span class="n">tablespaces</span> <span class="o">|</span> <span class="n">grep</span> <span class="o">-</span><span class="n">p</span> <span class="s">&quot;Autoresize&quot;</span> <span class="o">|</span><span class="n">grep</span> <span class="s">&quot;No No &quot;</span><span class="o">|</span><span class="n">cut</span> <span class="o">-</span><span class="n">d</span> <span class="s">&quot; &quot;</span> <span class="o">-</span><span class="n">f</span> <span class="mi">1</span> <span class="o">|</span><span class="k">while</span> <span class="n">read</span> <span class="n">cur_addr</span><span class="p">;</span> <span class="k">do</span>
+      <span class="n">cur_line</span><span class="o">=</span><span class="err">`</span><span class="n">db2pd</span> <span class="o">-</span><span class="n">db</span> <span class="err">$</span><span class="n">cur_db_name</span> <span class="o">-</span><span class="n">tablespaces</span> <span class="o">|</span> <span class="n">grep</span> <span class="o">-</span><span class="n">p</span> <span class="s">&quot;Tablespace Configuration&quot;</span> <span class="o">|</span><span class="n">grep</span> <span class="err">$</span><span class="n">cur_addr</span><span class="err">`</span>
+      <span class="n">flg_dms</span><span class="o">=</span><span class="err">`</span><span class="n">echo</span> <span class="err">$</span><span class="n">cur_line</span> <span class="o">|</span><span class="n">grep</span> <span class="s">&quot;DMS &quot;</span><span class="o">|</span><span class="n">grep</span> <span class="o">-</span><span class="n">v</span> <span class="n">grep</span> <span class="o">|</span><span class="n">wc</span> <span class="o">-</span><span class="n">l</span><span class="err">`</span>
+      <span class="k">if</span> <span class="p">[[</span> <span class="err">$</span><span class="n">flg_dms</span> <span class="o">-</span><span class="n">eq</span> <span class="s">&quot;1&quot;</span> <span class="p">]];</span> <span class="n">then</span>
+         <span class="n">trg_tbnm</span><span class="o">=</span><span class="err">`</span><span class="n">echo</span> <span class="err">$</span><span class="n">cur_line</span><span class="o">|</span><span class="n">cut</span> <span class="o">-</span><span class="n">d</span> <span class="s">&quot; &quot;</span> <span class="o">-</span><span class="n">f</span> <span class="mi">15</span><span class="err">`</span>
+         <span class="n">echo</span> <span class="s">&quot;alter tablespace $trg_tbnm autoresize yes&quot;</span>
+      <span class="n">fi</span>
+   <span class="n">done</span>
+<span class="n">done</span>
+</pre></div>
+
+
+<div class="hlcode"><pre><span class="o">--</span> <span class="n">Platform</span><span class="o">:</span> <span class="n">linux</span> <span class="n">platform</span><span class="o">:</span>
+<span class="n">db2</span> <span class="n">list</span> <span class="n">db</span> <span class="n">directory</span><span class="o">|</span><span class="n">grep</span> <span class="o">-</span><span class="n">B</span> <span class="mi">5</span> <span class="n">Indirect</span><span class="o">|</span><span class="n">grep</span> <span class="s">&quot;Database alias&quot;</span><span class="o">|</span><span class="n">cut</span> <span class="o">-</span><span class="n">d</span> <span class="s">&quot;=&quot;</span> <span class="o">-</span><span class="n">f</span> <span class="mi">2</span><span class="o">|</span> <span class="k">while</span> <span class="n">read</span> <span class="n">cur_db_name</span><span class="p">;</span> <span class="k">do</span>
+   <span class="n">echo</span> <span class="s">&quot;-- DB Name: $cur_db_name --&quot;</span>
+   <span class="n">cur_sections</span><span class="o">=</span><span class="err">`</span><span class="n">db2pd</span> <span class="o">-</span><span class="n">db</span> <span class="err">$</span><span class="n">cur_db_name</span> <span class="o">-</span><span class="n">tablespaces</span> <span class="o">|</span> <span class="n">egrep</span> <span class="o">-</span><span class="n">n</span> <span class="o">-</span><span class="n">e</span> <span class="s">&quot;Tablespace .*:|Containers:&quot;</span><span class="err">`</span>
+   <span class="n">cur_tbsp_cfg</span><span class="o">=</span><span class="err">`</span><span class="n">echo</span> <span class="err">$</span><span class="n">cur_sections</span><span class="o">|</span><span class="n">cut</span> <span class="o">-</span><span class="n">d</span> <span class="s">&quot;:&quot;</span> <span class="o">-</span><span class="n">f</span> <span class="mi">1</span><span class="err">`</span>
+   <span class="n">cur_tbsp_sts</span><span class="o">=</span><span class="err">`</span><span class="n">echo</span> <span class="err">$</span><span class="n">cur_sections</span><span class="o">|</span><span class="n">cut</span> <span class="o">-</span><span class="n">d</span> <span class="s">&quot;:&quot;</span> <span class="o">-</span><span class="n">f</span> <span class="mi">3</span><span class="err">`</span>
+   <span class="n">cur_tbsp_ars</span><span class="o">=</span><span class="err">`</span><span class="n">echo</span> <span class="err">$</span><span class="n">cur_sections</span><span class="o">|</span><span class="n">cut</span> <span class="o">-</span><span class="n">d</span> <span class="s">&quot;:&quot;</span> <span class="o">-</span><span class="n">f</span> <span class="mi">5</span><span class="err">`</span>
+   <span class="n">cur_contnr</span><span class="o">=</span><span class="err">`</span><span class="n">echo</span> <span class="err">$</span><span class="n">cur_sections</span><span class="o">|</span><span class="n">cut</span> <span class="o">-</span><span class="n">d</span> <span class="s">&quot;:&quot;</span> <span class="o">-</span><span class="n">f</span> <span class="mi">7</span><span class="err">`</span>
+   <span class="p">((</span><span class="n">cur_ts_ars_lns</span><span class="o">=</span><span class="err">$</span><span class="n">cur_contnr</span> <span class="o">-</span> <span class="err">$</span><span class="n">cur_tbsp_ars</span><span class="p">))</span>
+   <span class="p">((</span><span class="n">cur_ts_cfg_lns</span><span class="o">=</span><span class="err">$</span><span class="n">cur_tbsp_sts</span> <span class="o">-</span> <span class="n">cur_tbsp_cfg</span><span class="p">))</span>
+   <span class="n">db2pd</span> <span class="o">-</span><span class="n">db</span> <span class="err">$</span><span class="n">cur_db_name</span> <span class="o">-</span><span class="n">tablespaces</span> <span class="o">|</span> <span class="n">head</span> <span class="o">-</span><span class="n">n</span> <span class="err">$</span><span class="n">cur_contnr</span> <span class="o">|</span> <span class="n">tail</span> <span class="o">-</span><span class="n">n</span> <span class="err">$</span><span class="n">cur_ts_ars_lns</span> <span class="o">|</span><span class="n">grep</span> <span class="s">&quot;No No &quot;</span><span class="o">|</span><span class="n">cut</span> <span class="o">-</span><span class="n">d</span> <span class="s">&quot; &quot;</span> <span class="o">-</span><span class="n">f</span> <span class="mi">1</span> <span class="o">|</span><span class="k">while</span> <span class="n">read</span> <span class="n">cur_addr</span><span class="p">;</span> <span class="k">do</span>
+      <span class="n">cur_line</span><span class="o">=</span><span class="err">`</span><span class="n">db2pd</span> <span class="o">-</span><span class="n">db</span> <span class="err">$</span><span class="n">cur_db_name</span> <span class="o">-</span><span class="n">tablespaces</span> <span class="o">|</span> <span class="n">head</span> <span class="o">-</span><span class="n">n</span> <span class="err">$</span><span class="n">cur_tbsp_sts</span> <span class="o">|</span> <span class="n">tail</span> <span class="o">-</span><span class="n">n</span> <span class="err">$</span><span class="n">cur_ts_cfg_lns</span> <span class="o">|</span><span class="n">grep</span> <span class="err">$</span><span class="n">cur_addr</span><span class="err">`</span>
+      <span class="n">flg_dms</span><span class="o">=</span><span class="err">`</span><span class="n">echo</span> <span class="err">$</span><span class="n">cur_line</span> <span class="o">|</span><span class="n">grep</span> <span class="s">&quot;DMS &quot;</span><span class="o">|</span><span class="n">grep</span> <span class="o">-</span><span class="n">v</span> <span class="n">grep</span> <span class="o">|</span><span class="n">wc</span> <span class="o">-</span><span class="n">l</span><span class="err">`</span>
+      <span class="k">if</span> <span class="p">[[</span> <span class="err">$</span><span class="n">flg_dms</span> <span class="o">-</span><span class="n">eq</span> <span class="s">&quot;1&quot;</span> <span class="p">]];</span> <span class="n">then</span>
+         <span class="n">trg_tbnm</span><span class="o">=</span><span class="err">`</span><span class="n">echo</span> <span class="err">$</span><span class="n">cur_line</span><span class="o">|</span><span class="n">cut</span> <span class="o">-</span><span class="n">d</span> <span class="s">&quot; &quot;</span> <span class="o">-</span><span class="n">f</span> <span class="mi">15</span><span class="err">`</span>
+         <span class="n">echo</span> <span class="s">&quot;alter tablespace $trg_tbnm autoresize yes&quot;</span>
+      <span class="n">fi</span>
+   <span class="n">done</span>
+<span class="n">done</span>
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

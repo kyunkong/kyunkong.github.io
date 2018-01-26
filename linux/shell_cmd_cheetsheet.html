@@ -1,0 +1,131 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>Shell command line cheetsheet - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#linux">linux</a>
+    &nbsp;&#187;&nbsp;Shell command line cheetsheet
+    <span class="updated">Last Update: &nbsp;
+    2018-01-16 14:35:27
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#shell-bashzsh-command-line-key-shortcuts-vi-like">shell bash/zsh command line key shortcuts --vi like</a></li>
+<li><a href="#normal-mode">Normal mode</a></li>
+<li><a href="#insert-mode">Insert mode</a></li>
+<li><a href="#shellbash-command-line-key-shortcuts-emacs-like">Shell(bash) command line key shortcuts --Emacs like</a></li>
+</ul>
+</div>
+<h1 id="shell-bashzsh-command-line-key-shortcuts-vi-like">shell bash/zsh command line key shortcuts --vi like</h1>
+<div class="hlcode"><pre><span class="n">g</span><span class="o">~</span><span class="n">iw</span><span class="o">:</span>   <span class="n">Change</span> <span class="n">a</span> <span class="n">word</span> <span class="n">into</span> <span class="n">upper</span> <span class="k">case</span>
+<span class="n">vaw</span><span class="o">~:</span>   <span class="n">The</span> <span class="n">same</span> <span class="n">effects</span>
+</pre></div>
+
+
+<h1 id="normal-mode">Normal mode</h1>
+<div class="hlcode"><pre><span class="n">s</span><span class="o">:</span>      <span class="n">change</span> <span class="n">a</span> <span class="n">char</span>
+<span class="n">S</span><span class="o">:</span>      <span class="n">change</span> <span class="n">a</span> <span class="n">line</span>
+<span class="n">w</span><span class="o">:</span>      <span class="n">Forward</span> <span class="n">a</span> <span class="n">word</span>
+<span class="n">b</span><span class="o">:</span>      <span class="n">Backwards</span> <span class="n">a</span> <span class="n">word</span>
+<span class="mi">0</span><span class="o">:</span>      <span class="n">Beginning</span> <span class="n">of</span> <span class="n">a</span> <span class="n">line</span>
+<span class="n">$</span><span class="o">:</span>      <span class="n">eol</span>
+<span class="n">v</span><span class="o">:</span>      <span class="n">editor</span> <span class="n">mode</span>
+<span class="n">C</span><span class="o">-</span><span class="n">w</span><span class="o">:</span>    <span class="n">delete</span> <span class="n">the</span> <span class="n">word</span> <span class="n">before</span> <span class="n">the</span> <span class="n">cursor</span><span class="o">(</span><span class="n">not</span> <span class="k">include</span><span class="o">),</span> <span class="n">also</span> <span class="n">suitable</span> <span class="k">for</span> <span class="n">insert</span> <span class="n">mode</span>
+<span class="n">C</span><span class="o">-</span><span class="n">u</span><span class="o">:</span>    <span class="n">delete</span> <span class="n">the</span> <span class="n">line</span> <span class="n">before</span> <span class="n">the</span> <span class="n">cursor</span><span class="o">(</span><span class="n">not</span> <span class="k">include</span><span class="o">),</span> <span class="n">also</span> <span class="n">suitable</span> <span class="k">for</span> <span class="n">insert</span> <span class="n">mode</span>
+<span class="n">C</span><span class="o">-</span><span class="n">k</span><span class="o">:</span>    <span class="n">delete</span> <span class="n">the</span> <span class="n">line</span> <span class="n">after</span> <span class="n">the</span> <span class="n">cursor</span><span class="o">(</span><span class="k">include</span> <span class="n">cursor</span><span class="o">)</span>
+<span class="n">C</span><span class="o">-</span><span class="n">r</span><span class="o">:</span>    <span class="n">search</span> <span class="n">the</span> <span class="n">command</span> <span class="n">line</span> <span class="n">history</span>
+<span class="n">C</span><span class="o">-</span><span class="n">t</span><span class="o">:</span>    <span class="k">switch</span> <span class="n">the</span> <span class="n">position</span> <span class="n">of</span> <span class="n">the</span> <span class="n">current</span> <span class="n">char</span> <span class="n">and</span> <span class="n">previous</span> <span class="n">char</span>
+<span class="n">C</span><span class="o">-</span><span class="n">p</span><span class="o">:</span>    <span class="n">find</span> <span class="n">the</span> <span class="n">previous</span> <span class="n">command</span> <span class="n">history</span>
+<span class="n">C</span><span class="o">-</span><span class="n">n</span><span class="o">:</span>    <span class="n">find</span> <span class="n">the</span> <span class="n">next</span> <span class="n">command</span> <span class="n">history</span>
+</pre></div>
+
+
+<h1 id="insert-mode">Insert mode</h1>
+<p><strong><em>can refer to EMACS like</em></strong></p>
+<div class="hlcode"><pre><span class="n">C</span><span class="o">-</span><span class="n">h</span><span class="o">:</span>    <span class="n">backspace</span>
+</pre></div>
+
+
+<p>================================================================</p>
+<h1 id="shellbash-command-line-key-shortcuts-emacs-like">Shell(bash) command line key shortcuts --Emacs like</h1>
+<div class="hlcode"><pre><span class="cm">/* C means CTRL, A means ALT */</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">a:</span> <span class="n">To</span> <span class="n">the</span> <span class="n">beginning</span> <span class="n">of</span> <span class="n">a</span> <span class="n">line</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">e:</span> <span class="n">To</span> <span class="n">the</span> <span class="k">end</span> <span class="n">of</span> <span class="n">a</span> <span class="n">line</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">b:</span> <span class="n">Back</span> <span class="n">to</span> <span class="n">one</span> <span class="n">character</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">f:</span> <span class="n">Forward</span> <span class="n">to</span> <span class="n">one</span> <span class="n">character</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">w:</span> <span class="n">Change</span> <span class="n">a</span> <span class="n">word</span> <span class="k">before</span> <span class="n">the</span> <span class="n">cursor</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">u:</span> <span class="n">Change</span> <span class="n">a</span> <span class="n">line</span> <span class="k">before</span> <span class="n">the</span> <span class="n">cursor</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">y:</span> <span class="n">Recover</span> <span class="n">the</span> <span class="n">characters</span> <span class="n">that</span> <span class="n">last</span> <span class="no">C</span><span class="o">-</span><span class="n">u</span> <span class="n">deleted</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">d:</span> <span class="n">Delete</span> <span class="n">the</span> <span class="n">current</span> <span class="n">character</span>      <span class="p">#</span> <span class="no">C</span><span class="o">-</span><span class="n">d</span> <span class="n">equals</span> <span class="n">to</span> <span class="n">enter</span> <span class="n">in</span> <span class="n">my</span> <span class="n">env</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">h:</span> <span class="n">Backspace</span><span class="p">,</span> <span class="n">delete</span> <span class="n">a</span> <span class="n">character</span> <span class="n">forward</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">k:</span> <span class="n">Change</span> <span class="n">a</span> <span class="n">line</span> <span class="n">after</span><span class="p">(</span><span class="n">including</span><span class="p">)</span> <span class="n">the</span> <span class="n">current</span> <span class="n">cursor</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">l:</span> <span class="n">Clear</span> <span class="n">the</span> <span class="n">screen</span><span class="p">,</span> <span class="n">equal</span> <span class="n">the</span> <span class="n">clear</span> <span class="n">command</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">o:</span> <span class="n">Equal</span> <span class="n">enter</span><span class="p">,</span><span class="o">&lt;</span><span class="no">CR</span><span class="o">&gt;</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">j:</span> <span class="n">Equal</span> <span class="no">C</span><span class="o">-</span><span class="n">o</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">p:</span> <span class="n">Equal</span> <span class="n">up</span> <span class="n">arrow</span> <span class="n">key</span><span class="p">,</span> <span class="n">find</span> <span class="n">the</span> <span class="n">previous</span> <span class="n">command</span> <span class="n">history</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">n:</span> <span class="n">Equal</span> <span class="n">down</span> <span class="n">arrow</span> <span class="n">key</span><span class="p">,</span> <span class="n">find</span> <span class="n">the</span> <span class="n">next</span> <span class="n">command</span> <span class="n">history</span>
+<span class="no">C</span><span class="o">-?:</span> <span class="n">Undo</span> <span class="n">the</span> <span class="n">last</span> <span class="k">input</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">x:</span> <span class="n">Jump</span> <span class="n">between</span> <span class="n">the</span> <span class="n">current</span> <span class="n">cursor</span> <span class="k">and</span> <span class="n">the</span> <span class="n">beginning</span> <span class="n">of</span> <span class="n">the</span> <span class="n">line</span><span class="o">*</span>     <span class="p">#</span> <span class="n">Not</span> <span class="n">work</span> <span class="n">in</span> <span class="n">my</span> <span class="n">env</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">t:</span> <span class="n">Exchange</span> <span class="n">the</span> <span class="n">position</span> <span class="n">between</span> <span class="n">current</span> <span class="n">cursor</span> <span class="k">and</span> <span class="n">the</span> <span class="n">previous</span> <span class="n">character</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">r:</span> <span class="n">Search</span> <span class="n">history</span> <span class="n">commands</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">i:</span> <span class="no">TAB</span><span class="p">,</span> <span class="n">auto</span><span class="o">-</span><span class="n">completion</span>
+<span class="no">C</span><span class="o">-</span><span class="nl">z:</span> <span class="n">Pause</span> <span class="n">the</span> <span class="n">current</span> <span class="n">command</span><span class="p">,</span> <span class="s">&quot;fg %job_number&quot;</span> <span class="k">and</span> <span class="s">&quot;bg %job_number&quot;</span> <span class="n">can</span> <span class="n">bring</span> <span class="n">the</span> <span class="n">job</span> <span class="n">back</span> <span class="n">to</span> <span class="n">foreground</span> <span class="k">and</span> <span class="n">background</span> <span class="n">respectively</span>
+<span class="no">A</span><span class="o">-</span><span class="nl">u:</span> <span class="n">The</span> <span class="n">word</span> <span class="n">at</span> <span class="n">the</span> <span class="n">cursor</span> <span class="n">to</span> <span class="n">uppercase</span> <span class="p">(</span><span class="n">from</span> <span class="n">the</span> <span class="n">cursor</span> <span class="n">to</span> <span class="n">the</span> <span class="k">end</span> <span class="n">of</span> <span class="n">a</span> <span class="n">word</span><span class="p">)</span>
+<span class="no">A</span><span class="o">-</span><span class="nl">l:</span> <span class="n">The</span> <span class="n">word</span> <span class="n">at</span> <span class="n">the</span> <span class="n">cursor</span> <span class="n">to</span> <span class="n">lowercase</span> <span class="p">(</span><span class="n">from</span> <span class="n">the</span> <span class="n">cursor</span> <span class="n">to</span> <span class="n">the</span> <span class="k">end</span> <span class="n">of</span> <span class="n">a</span> <span class="n">word</span><span class="p">)</span>
+<span class="no">A</span><span class="o">-</span><span class="nl">c:</span> <span class="n">The</span> <span class="n">word</span> <span class="n">at</span> <span class="n">the</span> <span class="n">cursor</span> <span class="n">to</span> <span class="n">the</span> <span class="n">first</span> <span class="n">letter</span> <span class="n">capitalized</span> <span class="p">(</span><span class="n">from</span> <span class="n">the</span> <span class="n">cursor</span> <span class="n">to</span> <span class="n">the</span> <span class="k">end</span> <span class="n">of</span> <span class="n">a</span> <span class="n">word</span><span class="p">)</span>
+<span class="no">A</span><span class="o">-</span><span class="nl">d:</span> <span class="n">Delete</span> <span class="n">the</span> <span class="n">word</span> <span class="n">after</span><span class="p">(</span><span class="n">including</span><span class="p">)</span> <span class="n">the</span> <span class="n">cursor</span>
+<span class="no">A</span><span class="o">-</span><span class="nl">b:</span> <span class="n">Forward</span> <span class="n">a</span> <span class="n">word</span>
+<span class="o">^</span>  <span class="o">:</span> <span class="n">Substitution</span> <span class="n">last</span> <span class="n">command</span><span class="p">.</span> <span class="n">This</span> <span class="n">substitution</span> <span class="n">must</span> <span class="n">be</span> <span class="n">command</span> <span class="n">only</span><span class="p">.</span> <span class="o">^</span><span class="n">old_cmd</span> <span class="o">^</span><span class="n">new_cmd</span>
+
+<span class="n">Ctrl</span><span class="o">+</span><span class="n">Alt</span><span class="o">+</span><span class="nl">T:</span> <span class="n">Open</span> <span class="n">a</span> <span class="n">terminal</span>
+<span class="n">Ctrl</span><span class="o">+</span><span class="n">Shift</span><span class="o">+</span><span class="nl">N:</span>  <span class="n">Open</span> <span class="n">a</span> <span class="k">new</span> <span class="n">terminal</span>
+<span class="n">Ctrl</span><span class="o">+</span><span class="n">Shift</span><span class="o">+</span><span class="nl">T:</span>  <span class="n">Open</span> <span class="n">a</span> <span class="k">new</span> <span class="n">tab</span>
+<span class="n">Ctrl</span><span class="o">+</span><span class="n">Shift</span><span class="o">+</span><span class="nl">W:</span>  <span class="n">Close</span> <span class="n">a</span> <span class="n">tab</span>
+<span class="n">Ctrl</span><span class="o">+</span><span class="n">Shift</span><span class="o">+</span><span class="nl">Q:</span>  <span class="n">Close</span> <span class="n">terminal</span>
+<span class="n">Ctrl</span><span class="o">+</span><span class="n">Shift</span><span class="o">+</span><span class="nl">C:</span>  <span class="n">Copy</span>
+<span class="n">Ctr</span><span class="o">+</span><span class="n">Shift</span><span class="o">+</span><span class="nl">V:</span>   <span class="n">Paste</span>
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

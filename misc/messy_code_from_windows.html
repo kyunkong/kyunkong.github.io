@@ -1,0 +1,103 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>Messy Code from Windows - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#misc">misc</a>
+    &nbsp;&#187;&nbsp;Messy Code from Windows
+    <span class="updated">Last Update: &nbsp;
+    2018-01-15 18:03:33
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#linuxlocale">查看Linux平台locale：</a></li>
+<li><a href="#_1">查看该文件编码方式</a></li>
+<li><a href="#iconv">查询iconv是否支持中文字符</a><ul>
+<li><a href="#the-ksh-script-to-remove-the-m-on-aix">the ksh script to remove the ^M on AIX</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<p>从windowscopy过来的文件，有很多在Linux平台下显示为乱码，</p>
+<h1 id="linuxlocale">查看Linux平台locale：</h1>
+<p>[kingsley@oc7421025535 note]$ file 新建文本文档.txt <br />
+新建文本文档.txt: ISO-8859 text, with CRLF line terminators<br />
+[kingsley@oc7421025535 note]$ locale<br />
+LANG=en_US.UTF-8<br />
+LC_CTYPE="en_US.UTF-8"<br />
+LC_NUMERIC="en_US.UTF-8"<br />
+LC_TIME="en_US.UTF-8"<br />
+LC_COLLATE="en_US.UTF-8"<br />
+LC_MONETARY="en_US.UTF-8"<br />
+LC_MESSAGES="en_US.UTF-8"<br />
+LC_PAPER="en_US.UTF-8"<br />
+LC_NAME="en_US.UTF-8"<br />
+LC_ADDRESS="en_US.UTF-8"<br />
+LC_TELEPHONE="en_US.UTF-8"<br />
+LC_MEASUREMENT="en_US.UTF-8"<br />
+LC_IDENTIFICATION="en_US.UTF-8"<br />
+LC_ALL=<br />
+[kingsley@oc7421025535 note]$ cat /etc/sysconfig/i18n<br />
+LANG="en_US.UTF-8"<br />
+SYSFONT="latarcyrheb-sun16"<br />
+字符编码为UTF-8，尝试用dos2unix转换，也失败，但在大部分Linux平台，有iconv可以对字符编码进行转换：</p>
+<h1 id="_1">查看该文件编码方式</h1>
+<p>[kingsley@oc7421025535 note]$ file 新建文本文档.txt <br />
+新建文本文档.txt: ISO-8859 text, with CRLF line terminators</p>
+<h1 id="iconv">查询iconv是否支持中文字符</h1>
+<p>iconv -l|grep -i iso-8859<br />
+尝试用iconv转换成ISO-8859的，表示失败，最后尝试转换成GBK，成功：<br />
+iconv -f GBK -t UTF-8 新建文本文档.txt -o 1.txt<br />
+[kingsley@oc7421025535 note]$ file 1.txt <br />
+1.txt: UTF-8 Unicode text, with CRLF line terminators</p>
+<h2 id="the-ksh-script-to-remove-the-m-on-aix">the ksh script to remove the ^M on AIX</h2>
+<div class="hlcode"><pre><span class="c">#!/bin/ksh</span>
+<span class="nv">DIR</span><span class="o">=</span>/usr/local/
+<span class="k">for </span>file in <span class="k">$(</span>find <span class="nv">$DIR</span> -type f<span class="k">)</span>; <span class="k">do</span>
+tr -d <span class="s1">&#39;\r&#39;</span> &lt;<span class="nv">$file</span>&gt;temp.<span class="nv">$$</span> <span class="o">&amp;&amp;</span> mv temp.<span class="nv">$$</span> <span class="nv">$file</span>
+<span class="k">done</span>
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

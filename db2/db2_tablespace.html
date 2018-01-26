@@ -1,0 +1,131 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>DB2 tablespace - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#db2">db2</a>
+    &nbsp;&#187;&nbsp;DB2 tablespace
+    <span class="updated">Last Update: &nbsp;
+    2018-01-16 17:09:15
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <h2 id="creating-the-dms-tablespace">creating the DMS tablespace</h2>
+<h3 id="non-auto-resize">non-auto resize</h3>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;create tablespace tb2 managed by database using (file &#39;/db/db2inst1/testdb/db2inst1/NODE0000/TESTDB/T0000005/myfile&#39; 2048, file &#39;/db/db2inst1/testdb/db2inst1/NODE0000/TESTDB/T0000005/myfile2&#39; 2048) extentsize 4&quot;</span>
+</pre></div>
+
+
+<h3 id="auto-resize">auto resize</h3>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;create tablespace tb1 pagesize 8192 managed by database using (file &#39;/db/db2inst1/testdb/db2inst1/NODE0000/TESTDB/T0000006/tb1.dbf&#39; 20M) autoresize yes maxsize none&quot;</span>
+</pre></div>
+
+
+<h2 id="alter-tbs-to-autoresize">alter tbs to autoresize</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;alter tablespace tb2 autoresize yes&quot;</span>
+</pre></div>
+
+
+<h2 id="alter-tablespace-add-container">alter tablespace add container</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;alter tablespace tb2 add (file &#39;/db/db2inst1/testdb/db2inst1/NODE0000/TESTDB/T0000006/tb1&#39; 10M) autoresize yes maxsize none&quot;</span>
+</pre></div>
+
+
+<h2 id="alter-tablespace-extend">alter tablespace extend</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;alter tablespace TB2 extend (file &#39;/db/db2inst1/testdb/db2inst1/NODE0000/TESTDB/T0000006/tb1&#39; 768) autoresize yes maxsize none&quot;</span>
+</pre></div>
+
+
+<h2 id="alter-tablespace-reduce">alter tablespace reduce</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;alter tablespace TB2 reduce (file &#39;/db/db2inst1/testdb/db2inst1/NODE0000/TESTDB/T0000006/tb1&#39; 2048) autoresize yes maxsize none&quot;</span>
+</pre></div>
+
+
+<h2 id="auto-storage-management">Auto storage management</h2>
+<p>Create AUTOMATIC STORAGE table spaces<br />
+– No explicit container definitions are provided<br />
+– Containers automatically created across the storage paths<br />
+– Growth of existing containers and addition of new ones managed by DB2</p>
+<h3 id="examples">examples</h3>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;create database testdb1 automatic storage no&quot;</span>
+</pre></div>
+
+
+<p><strong><em>Automatic storage enabled: NO</em></strong><br />
+<strong><em>Database path: dftdbpath</em></strong></p>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;create database testdb1 on /db2/dir1, /db2/dir2, /db2/dir3</span>
+</pre></div>
+
+
+<p><strong><em>AS enabled: YES</em></strong><br />
+<strong><em>Database path: /db2/dir1</em></strong><br />
+<strong><em>Storage path: /db2/dir1, /db2/dir2, /db2/dir3</em></strong></p>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;create database testdb1&quot;</span>
+</pre></div>
+
+
+<p><strong><em>AS enabled: YES</em></strong><br />
+<strong><em>Database path: dftdbpath</em></strong><br />
+<strong><em>Storage path: dftdbpath</em></strong></p>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;create database testdb1 on /stor1, /stor2 dbpath on /dbpath</span>
+</pre></div>
+
+
+<p><strong><em>AS enabled: YES</em></strong><br />
+<strong><em>Database path: /dbpath</em></strong><br />
+<strong><em>Storage path: /stor1, stor2</em></strong></p>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;create database testdb1 on /dbdir&quot;</span>
+</pre></div>
+
+
+<p><strong><em>AS enabled: YES</em></strong><br />
+<strong><em>Database path: /dbdir</em></strong><br />
+<strong><em>Storage path: /dbdir</em></strong></p>
+<h2 id="converting-regular-tablespace-to-large">converting regular tablespace to large</h2>
+<p>convert=&gt; reorg=&gt; set integrity</p>
+<div class="hlcode"><pre><span class="nx">db2</span> <span class="s2">&quot;alter tablespace &lt;name&gt; convert to large&quot;</span>
+<span class="nx">db2</span> <span class="s2">&quot;reorg all indexes for table &lt;name&gt; allow read access&quot;</span>
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

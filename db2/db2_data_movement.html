@@ -1,0 +1,220 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>DB2 data movement - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#db2">db2</a>
+    &nbsp;&#187;&nbsp;DB2 data movement
+    <span class="updated">Last Update: &nbsp;
+    2018-01-16 16:54:11
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#moving-data-between-tables">moving data between tables</a></li>
+<li><a href="#capturing-ddl-and-duplicating-the-table-definitions">capturing DDL and duplicating the table definitions</a></li>
+<li><a href="#movingcopying-databases-and-tablespaces">moving/copying databases and tablespaces</a><ul>
+<li><a href="#using-redirect-restore-to-move-tablespace-containers">Using redirect restore to move tablespace containers</a></li>
+</ul>
+</li>
+<li><a href="#change-automatic-storage-path">Change automatic storage path</a></li>
+<li><a href="#restore-rebuild">Restore rebuild</a></li>
+<li><a href="#db2relocatedb">db2relocatedb</a><ul>
+<li><a href="#move-containers">move containers</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<h2 id="moving-data-between-tables">moving data between tables</h2>
+<ul>
+<li>Insert with subselect<br />
+<code>db2 "insert into t1 select * from t2"</code></li>
+<li>Export<br />
+<code>db2 "export to output.ixf of ixf select * from table_name"</code></li>
+<li>Import<br />
+<code>db2 "import from input.ixf of ixf insert into table_name"</code></li>
+<li>Load from files, pipes and cursors</li>
+</ul>
+<div class="hlcode"><pre>    <span class="o">--</span><span class="n">from</span> <span class="n">files</span>
+    <span class="n">db2</span> <span class="s">&quot;load from input.ixf of ixf insert into table_name&quot;</span>
+    <span class="o">--</span><span class="n">from</span> <span class="n">cursors</span>
+    <span class="n">db2</span> <span class="s">&quot;create table tt like t in fung&quot;</span>
+    <span class="n">db2</span> <span class="s">&quot;declare cursor1 cursor for select * from t&quot;</span>
+    <span class="n">db2</span> <span class="n">load</span> <span class="n">from</span> <span class="n">cursor1</span> <span class="n">of</span> <span class="n">cursor</span> <span class="n">messages</span> <span class="n">load</span><span class="p">.</span><span class="n">msg</span> <span class="n">insert</span> <span class="n">into</span> <span class="n">tt</span>
+    <span class="o">--</span><span class="n">load</span> <span class="n">status</span>
+    <span class="n">db2</span> <span class="s">&quot;load query table table_name&quot;</span>
+</pre></div>
+
+
+<h2 id="capturing-ddl-and-duplicating-the-table-definitions">capturing DDL and duplicating the table definitions</h2>
+<ul>
+<li>Import of IXF file with create option</li>
+</ul>
+<div class="hlcode"><pre>    <span class="n">db2</span> <span class="s">&quot;export to data.ixf of ixf select * from table_name where 1=0&quot;</span>
+    <span class="n">db2</span> <span class="s">&quot;import from data.ixf of ixf create into table_name&quot;</span>
+</pre></div>
+
+
+<ul>
+<li>Create table X like Y</li>
+<li>db2look</li>
+<li>ADMIN_COPY_SCHEMA procedure can copy schema with or without data</li>
+</ul>
+<h2 id="movingcopying-databases-and-tablespaces">moving/copying databases and tablespaces</h2>
+<ul>
+<li>Backup/Restore</li>
+</ul>
+<div class="hlcode"><pre>    <span class="n">old</span> <span class="n">location</span><span class="o">:</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">db2inst1</span><span class="o">/</span><span class="n">db2inst1</span><span class="o">/</span><span class="n">NODE0000</span><span class="o">/</span><span class="n">SQL00001</span><span class="o">/</span>
+    <span class="n">new</span> <span class="n">location</span><span class="o">:</span> <span class="o">/</span><span class="n">db</span><span class="o">/</span><span class="n">db2inst1</span><span class="o">/</span><span class="n">sample</span><span class="o">/</span>
+    <span class="n">db2</span> <span class="s">&quot;backup db sample to /backup&quot;</span>
+    <span class="n">db2</span> <span class="n">drop</span> <span class="n">db</span> <span class="n">sample</span>
+    <span class="n">db2</span> <span class="s">&quot;restore db sample from /backup to /db/db2inst1/sample&quot;</span>
+    <span class="o">--</span><span class="k">if</span> <span class="n">the</span> <span class="n">database</span> <span class="n">not</span> <span class="n">dropped</span><span class="p">,</span> <span class="n">the</span> <span class="n">to</span> <span class="n">clause</span> <span class="n">will</span> <span class="n">be</span> <span class="n">ignored</span>
+</pre></div>
+
+
+<ul>
+<li>db2relocatedb</li>
+<li>db2move</li>
+<li>Split mirror database copy</li>
+</ul>
+<h3 id="using-redirect-restore-to-move-tablespace-containers">Using redirect restore to move tablespace containers</h3>
+<div class="hlcode"><pre><span class="n">Database</span><span class="o">:</span> <span class="n">testdb</span> <span class="n">tablespace</span><span class="o">:</span> <span class="n">DMSTS1</span><span class="o">,</span> <span class="n">id</span><span class="o">=</span><span class="mi">8</span> <span class="n">type</span><span class="o">=</span><span class="n">DMS</span>
+<span class="n">old</span> <span class="n">containers</span><span class="o">:</span> <span class="sr">/db/db2inst1/testdb/db2inst1/NODE0000/SQL00001/</span><span class="n">DMSCONT1</span>
+                <span class="sr">/db/db2inst1/testdb/db2inst1/NODE0000/SQL00001/</span><span class="n">DMSCONT2</span>
+<span class="k">new</span> <span class="n">containers</span><span class="o">:</span> <span class="sr">/db/db2inst1/db2backup/db2inst1/NODE0000/TESTDB/T0000008/</span><span class="n">DMSCONT1</span>
+                <span class="sr">/db/db2inst1/db2backup/db2inst1/NODE0000/TESTDB/T0000008/</span><span class="n">DMSCONT2</span>
+
+<span class="n">db2</span> <span class="s2">&quot;backup database testdb tablespace dmsts1 to /db/db2inst1/db2backup/&quot;</span>
+<span class="n">db2</span> <span class="s2">&quot;restore database testdb from /db/db2inst1/db2backup redirect&quot;</span>
+<span class="n">db2</span> <span class="s2">&quot; set tablespace containers for 8 using</span>
+<span class="s2">(path &#39;/db/db2inst1/db2backup/db2inst1/NODE0000/TESTDB/T0000008/DMSCONT1&#39;, path &#39;/db/db2inst1/db2backup/db2inst1/NODE0000/TESTDB/T0000008/DMSCONT2&#39;) &quot;</span>
+<span class="n">db2</span> <span class="s2">&quot; restore database testdb continue &quot;</span>
+</pre></div>
+
+
+<h2 id="change-automatic-storage-path">Change automatic storage path</h2>
+<div class="hlcode"><pre><span class="nx">db2</span> <span class="s2">&quot;restore db testdb from &lt;path&gt; on /dbdir1, /dbdir2, /dbdir3&quot;</span>
+</pre></div>
+
+
+<h2 id="restore-rebuild">Restore rebuild</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="s">&quot;restore db testdb rebuild with all tablespaces in database except tablespace(SMS01, SMS02) taken at timestamp&quot;</span>
+</pre></div>
+
+
+<h2 id="db2relocatedb">db2relocatedb</h2>
+<p>db2relocatedb is an offline, standalone tool that can be used to change:<br />
+- database name<br />
+- database path<br />
+- instance name<br />
+- location of one or more tablespace containers<br />
+- automatic storage path</p>
+<div class="hlcode"><pre><span class="n">Usages</span><span class="o">:</span>
+<span class="n">db2relocatedb</span> <span class="o">-</span><span class="n">f</span> <span class="n">config_file</span>
+
+<span class="n">config_file</span><span class="o">:</span>
+<span class="n">db_name</span><span class="o">=</span><span class="n">oldname</span><span class="o">,</span> <span class="n">newname</span>
+<span class="n">db_path</span><span class="o">=</span><span class="n">oldpath</span><span class="o">,</span> <span class="n">newpath</span>
+<span class="n">instance</span><span class="o">=</span><span class="n">oldinst</span><span class="o">,</span> <span class="n">newinst</span>
+<span class="n">nodenum</span><span class="o">=</span><span class="n">nodenumber</span>
+<span class="n">lod_dir</span><span class="o">=</span><span class="n">oldlogdir</span><span class="o">,</span> <span class="n">newlogdir</span>
+<span class="n">cont_path</span><span class="o">=</span><span class="n">oldpath1</span><span class="o">,</span> <span class="n">newpath1</span>
+<span class="n">cont_path</span><span class="o">=</span><span class="n">oldpath2</span><span class="o">,</span> <span class="n">newpath2</span>
+<span class="n">storage_path</span><span class="o">=</span><span class="n">oldpath1</span><span class="o">,</span> <span class="n">newpath1</span>
+<span class="n">storage_path</span><span class="o">=</span><span class="n">oldpath2</span><span class="o">,</span> <span class="n">newpath2</span>
+</pre></div>
+
+
+<p>Examples:</p>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="n">create</span> <span class="n">database</span> <span class="n">sales</span> <span class="n">on</span> <span class="o">/</span><span class="n">db</span>
+</pre></div>
+
+
+<p>Change the path to /db2</p>
+<ol>
+<li>DB must deactive</li>
+<li>Move control file and containers to new location</li>
+<li>Create the configuration file of db2relocatedb.<br />
+db_name=sales<br />
+db_path=/db, /db2<br />
+instance=db2inst1<br />
+nodenum=0</li>
+</ol>
+<h3 id="move-containers">move containers</h3>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="o">-</span><span class="n">tvf</span> <span class="n">getcontainer</span><span class="p">.</span><span class="n">sql</span> 
+<span class="n">select</span> <span class="n">substr</span><span class="p">(</span><span class="n">TBSP_NAME</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">16</span><span class="p">)</span> <span class="n">as</span> <span class="n">TBS_NAME</span><span class="p">,</span> <span class="n">total_pages</span><span class="p">,</span> <span class="n">substr</span><span class="p">(</span><span class="n">CONTAINER_NAME</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">60</span><span class="p">)</span> <span class="n">as</span> <span class="n">Container_name</span> <span class="n">from</span> <span class="n">sysibmadm</span><span class="p">.</span><span class="n">snapcontainer</span> <span class="n">order</span> <span class="n">by</span> <span class="mi">1</span><span class="p">,</span><span class="mi">3</span>
+
+<span class="n">TBS_NAME</span>         <span class="n">TOTAL_PAGES</span>          <span class="n">CONTAINER_NAME</span>                                              
+<span class="o">----------------</span> <span class="o">--------------------</span> <span class="o">------------------------------------------------------------</span>
+<span class="n">FUNG</span>                            <span class="mi">12288</span> <span class="o">/</span><span class="n">db2</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">db2v97i</span><span class="o">/</span><span class="n">NODE0000</span><span class="o">/</span><span class="n">MYSAMPLE</span><span class="o">/</span><span class="n">T0000006</span><span class="o">/</span><span class="n">C0000000</span><span class="p">.</span><span class="n">LRG</span>   
+</pre></div>
+
+
+<p><strong>move to /db/data/db2v97i/NODE0000/MYSAMPLE/T0000006/C0000000.LRG</strong></p>
+<ul>
+<li>step 1</li>
+</ul>
+<div class="hlcode"><pre>    <span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="o">/</span><span class="n">db</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">db2v97i</span><span class="o">/</span><span class="n">NODE0000</span><span class="o">/</span><span class="n">MYSAMPLE</span><span class="o">/</span><span class="n">T0000006</span>
+    <span class="n">cp</span> <span class="o">/</span><span class="n">db2</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">db2v97i</span><span class="o">/</span><span class="n">NODE0000</span><span class="o">/</span><span class="n">MYSAMPLE</span><span class="o">/</span><span class="n">T0000006</span><span class="o">/*</span> <span class="o">/</span><span class="n">db</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">db2v97i</span><span class="o">/</span><span class="n">NODE0000</span><span class="o">/</span><span class="n">MYSAMPLE</span><span class="o">/</span><span class="n">T0000006</span><span class="o">/</span>
+</pre></div>
+
+
+<ul>
+<li>step 2</li>
+</ul>
+<div class="hlcode"><pre>    <span class="n">db_name</span><span class="o">=</span><span class="n">mysample</span>
+    <span class="n">db_path</span><span class="o">=/</span><span class="n">db2</span><span class="o">/</span><span class="n">data</span>
+    <span class="n">instance</span><span class="o">=</span><span class="n">db2v97i</span>
+    <span class="n">cont_path</span><span class="o">=/</span><span class="n">db2</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">db2v97i</span><span class="o">/</span><span class="n">NODE0000</span><span class="o">/</span><span class="n">MYSAMPLE</span><span class="o">/</span><span class="n">T0000006</span><span class="o">/</span><span class="n">C0000000</span><span class="p">.</span><span class="n">LRG</span><span class="p">,</span> <span class="o">/</span><span class="n">db</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">db2v97i</span><span class="o">/</span><span class="n">NODE0000</span><span class="o">/</span><span class="n">MYSAMPLE</span><span class="o">/</span><span class="n">T0000006</span><span class="o">/</span><span class="n">C0000000</span><span class="p">.</span><span class="n">LRG</span>
+</pre></div>
+
+
+<ul>
+<li>step 3</li>
+</ul>
+<div class="hlcode"><pre>   <span class="n">db2relocatedb</span> <span class="o">-</span><span class="n">f</span> <span class="n">cont</span><span class="p">.</span><span class="n">cfg</span>
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

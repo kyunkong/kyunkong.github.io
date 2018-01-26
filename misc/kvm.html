@@ -1,0 +1,138 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>KVM - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#misc">misc</a>
+    &nbsp;&#187;&nbsp;KVM
+    <span class="updated">Last Update: &nbsp;
+    2018-01-16 17:28:48
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#list-all-the-kvm-domainmachine-name">List all the KVM domain(machine name)</a></li>
+<li><a href="#startshutdown-the-kvm">Start/shutdown the KVM</a></li>
+<li><a href="#getting-the-volume-information">Getting the volume information</a></li>
+<li><a href="#removing-the-volume">Removing the volume</a></li>
+<li><a href="#extending-the-file-system">Extending the file system</a></li>
+<li><a href="#deleting-the-whole-kvm-guest">Deleting the whole KVM guest</a></li>
+<li><a href="#extending-disk-space-on-vm-guest">Extending disk space on VM guest</a></li>
+</ul>
+</div>
+<h2 id="list-all-the-kvm-domainmachine-name">List all the KVM domain(machine name)</h2>
+<div class="hlcode"><pre><span class="c"># virsh list --all</span>
+ Id    Name                           State
+ ----------------------------------------------------
+  -     win7_x64-KVM                   shut off
+  -
+</pre></div>
+
+
+<h2 id="startshutdown-the-kvm">Start/shutdown the KVM</h2>
+<div class="hlcode"><pre><span class="c"># virsh start win7_x64-KVM</span>
+Domain win7_x64-KVM started
+<span class="c"># virsh shutdown win7_x64-KVM</span>
+Domain win7_x64-KVM is being shutdown
+</pre></div>
+
+
+<h2 id="getting-the-volume-information">Getting the volume information</h2>
+<div class="hlcode"><pre><span class="c"># virsh vol-list --pool default</span>
+Name                 Path
+-----------------------------------------
+win7_x64-KVM.img     /var/lib/libvirt/images/win7_x64-KVM.img
+win7_x64-KVM.qcow2   /var/lib/libvirt/images/win7_x64-KVM.qcow2
+win7_x64-KVM.qcow2.type /var/lib/libvirt/images/win7_x64-KVM.qcow2.type
+</pre></div>
+
+
+<h2 id="removing-the-volume">Removing the volume</h2>
+<div class="hlcode"><pre><span class="c"># virsh vol-delete --pool default win7_x64-KVM.img</span>
+Vol win7_x64-KVM.img deleted
+</pre></div>
+
+
+<h2 id="extending-the-file-system">Extending the file system</h2>
+<div class="hlcode"><pre><span class="nb">cd</span> /var/lib/libvirt/clone
+<span class="c"># cp Virtual_Client_for_Linux_KVM_Windows_7.qcow2 Virtual_Client_for_Linux_KVM_Windows_7.qcow2.bak</span>
+virsh vol-resize win7_x64-KVM.qcow2 35G --pool default
+Size of volume <span class="s1">&#39;win7_x64-KVM.qcow2&#39;</span> successfully changed to 35G
+</pre></div>
+
+
+<h1 id="deleting-the-whole-kvm-guest">Deleting the whole KVM guest</h1>
+<div class="hlcode"><pre>virsh shutdown hostname
+virsh list --all
+virsh undifine hostname
+virsh vol-delete --pool default win7_x64-KVM.img
+</pre></div>
+
+
+<h1 id="extending-disk-space-on-vm-guest">Extending disk space on VM guest</h1>
+<div class="hlcode"><pre><span class="c"># virsh vol-list --pool default</span>
+Name                 Path                                    
+-----------------------------------------
+win7_x64-KVM.qcow2   /var/lib/libvirt/images/win7_x64-KVM.qcow2
+win7_x64-KVM.qcow2.type /var/lib/libvirt/images/win7_x64-KVM.qcow2.type
+
+<span class="c"># qemu-img info /var/lib/libvirt/images/win7_x64-KVM.qcow2</span>
+image: /var/lib/libvirt/images/win7_x64-KVM.qcow2
+file format: qcow2
+virtual size: 35G <span class="o">(</span>37580963840 bytes<span class="o">)</span>
+disk size: 32G
+cluster_size: 65536
+
+<span class="c"># qemu-img resize /var/lib/libvirt/images/win7_x64-KVM.qcow2 +5G</span>
+Image resized.
+root@oc7421025535 ~
+<span class="c"># qemu-img info /var/lib/libvirt/images/win7_x64-KVM.qcow2</span>
+image: /var/lib/libvirt/images/win7_x64-KVM.qcow2
+file format: qcow2
+virtual size: 40G <span class="o">(</span>42949672960 bytes<span class="o">)</span>
+disk size: 32G
+cluster_size: 65536
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

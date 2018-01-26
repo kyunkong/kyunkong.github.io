@@ -1,0 +1,242 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>DB2 automatically computing statistics - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#db2">db2</a>
+    &nbsp;&#187;&nbsp;DB2 automatically computing statistics
+    <span class="updated">Last Update: &nbsp;
+    2018-01-16 16:44:30
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#stmm">STMM</a><ul>
+<li><a href="#enabling-the-stmm">Enabling the STMM</a></li>
+<li><a href="#disabling-stmm">Disabling STMM</a></li>
+</ul>
+</li>
+<li><a href="#automatic-storage">Automatic storage</a><ul>
+<li><a href="#for-automatic-storage-databases">For AUTOMATIC STORAGE databases</a></li>
+<li><a href="#admin_get_storage_paths-administrative-viewdb2-v101">ADMIN_GET_STORAGE_PATHS administrative view(DB2 V10.1)</a></li>
+</ul>
+</li>
+<li><a href="#data-compression">Data compression</a></li>
+<li><a href="#automatic-maintenance">Automatic maintenance</a></li>
+<li><a href="#configuration-advisor">Configuration advisor</a></li>
+</ul>
+</div>
+<ul>
+<li>Self-tuning memory manager(STMM)</li>
+<li>Automatic storage</li>
+<li>Data compression</li>
+<li>Automatic maintenance</li>
+<li>Automatic database backup</li>
+<li>Automatic reorganization</li>
+<li>Automatic statistics collection</li>
+<li>Configuration advisor</li>
+<li>Utility throttling</li>
+</ul>
+<h2 id="stmm">STMM</h2>
+<p>STMM based on workload change and do not require DBA intervention.</p>
+<h3 id="enabling-the-stmm">Enabling the STMM</h3>
+<ul>
+<li>Enable self_tuning_mem on</li>
+</ul>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="k">connect</span> <span class="k">to</span> <span class="n">sample</span>
+<span class="n">db2</span> <span class="k">update</span> <span class="n">db</span> <span class="n">cfg</span> <span class="k">for</span> <span class="n">sample</span> <span class="k">using</span> <span class="n">self_tuning_mem</span> <span class="k">on</span>
+</pre></div>
+
+
+<ul>
+<li>Enable memory areas</li>
+</ul>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="k">connect</span> <span class="k">to</span> <span class="n">sample</span>
+<span class="n">db2</span> <span class="ss">&quot;update db cfg for sample using</span>
+<span class="ss">PCKCACHESZ AUTOMATIC</span>
+<span class="ss">LOCKLIST AUTOMATIC</span>
+<span class="ss">MAXLOCKS AUTOMATIC</span>
+<span class="ss">SORTHEAP AUTOMATIC</span>
+<span class="ss">SHEAPTHRES_SHR AUTOMATIC</span>
+<span class="ss">DATABASE_MEMORY AUTOMATIC</span>
+<span class="ss">&quot;</span>
+</pre></div>
+
+
+<ul>
+<li>Enable new creation buffer pools<br />
+<code>sql
+       db2 connect to sample
+       db2 "create bufferpool bpool8k size AUTOMATIC pagesize 8 k"</code></li>
+<li>Enable existing buffer pools<br />
+<code>sql
+       db2 connect to sample
+       db2 "alter bufferpool bpool4k size AUTOMATIC"</code></li>
+</ul>
+<h3 id="disabling-stmm">Disabling STMM</h3>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="k">connect</span> <span class="k">to</span> <span class="n">sample</span>
+<span class="n">db2</span> <span class="k">update</span> <span class="n">db</span> <span class="n">cfg</span> <span class="k">for</span> <span class="n">sample</span> <span class="k">using</span> <span class="n">self_tuning_mem</span> <span class="k">off</span>
+</pre></div>
+
+
+<ul>
+<li>Disabling memory areas in STMM</li>
+</ul>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="k">connect</span> <span class="k">to</span> <span class="n">sample</span>
+<span class="n">db2</span> <span class="ss">&quot;update db cfg for sample using</span>
+<span class="ss">PCKCACHESZ MANUAL</span>
+<span class="ss">LOCKLIST MANUAL</span>
+<span class="ss">MAXLOCKS MANUAL</span>
+<span class="ss">SORTHEAP MANUAL</span>
+<span class="ss">SHEAPTHRES_SHR MANUAL</span>
+<span class="ss">DATABASE_MEMORY MANUAL</span>
+<span class="ss">&quot;</span>
+</pre></div>
+
+
+<ul>
+<li>Disabling STMM of buffer pool<ul>
+<li>Disabling new creation of buffer pool<br />
+<code>sql
+    db2 connect to sample
+    db2 "create bufferpool bpool8k size 1000 pagesize 8 k"</code></li>
+<li>Disabling existing buffer pool<br />
+<code>sql
+    db2 connect to sample
+    db2 "alter bufferpool bpool4k size 1000"</code></li>
+</ul>
+</li>
+</ul>
+<h2 id="automatic-storage">Automatic storage</h2>
+<p>By default, all databases are created with automatic storage.</p>
+<ul>
+<li>
+<p>How to enable automatic storage manually<br />
+<code>sql
+    db2 "create database sample automatic storage yes on '/db2data/','/db2data2/', '/db2backup'  dbpath on '/db2data'"</code><br />
+    There are two ON clause from above create database sql, one is automatic storage, another is dbpath:</p>
+</li>
+<li>
+<p>Automatic storage ON<br />
+   This ON clause depends on the AUTOMATIC STORAGE option, if the AUTOMATIC STORAGE NO is specified, then only one path can be included, if the path is not specified, the dftdbpath(db cfg parameter) will be used as default database creation path.<br />
+   If the AUTOMATIC STORAGE YES is specified, then multiple paths can be specified follow with ON clause, if no path specified, then it will use default storage path, which dftdbpath is specified.</p>
+</li>
+<li>
+<p>DBPATH<br />
+   DBPATH specified on which path to create the database, if the DBPATH is not specified, then the database will be create on the first path listed in the ON option, if no paths are specified, the database is create on the dftdbpath default path. The database path is a location to store database structures:</p>
+</li>
+<li>Bufferpool information</li>
+<li>Table space information</li>
+<li>Storage path information</li>
+<li>Database configuration information</li>
+<li>History file information regarding backups, restores, loading of tables, reorganization of tables, altering of table spaces, and other database changes</li>
+<li>Log control files with information about active logs<br />
+        It is suggested that the DBPATH ON option be used when automatic storage is enabled to keep the database information separate from the database data.</li>
+</ul>
+<h3 id="for-automatic-storage-databases">For AUTOMATIC STORAGE databases</h3>
+<ul>
+<li>The system catalog table space (SYSCATSPACE) will use the directory /AS_PATH/$instance/NODExxxx/$DBNAME/T0000000</li>
+<li>The system temporary table space (TEMPSPACE1) will use the directory T0000001</li>
+<li>The default user table space (USERSPACE1) will use the directory T0000002</li>
+</ul>
+<h3 id="admin_get_storage_paths-administrative-viewdb2-v101">ADMIN_GET_STORAGE_PATHS administrative view(DB2 V10.1)</h3>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="ss">&quot;SELECT VARCHAR(STORAGE_GROUP_NAME, 30) AS STOGROUP, VARCHAR(DB_STORAGE_PATH, 40) AS STORAGE_PATH FROM TABLE(ADMIN_GET_STORAGE_PATHS(&#39;&#39;,-1)) AS T&quot;</span>
+</pre></div>
+
+
+<h2 id="data-compression">Data compression</h2>
+<ul>
+<li>Table compression</li>
+</ul>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="ss">&quot;create table sales compress yes&quot;</span>
+</pre></div>
+
+
+<ul>
+<li>Index compression<br />
+By default, index compression is enabled for compressed tables, and disabled for uncompressed tables.</li>
+</ul>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="ss">&quot;ALTER INDEX DB2ADMIN.IDX_ABSTRCOMPLISTSPEC_KINDID COMPRESS YES&quot;</span>
+</pre></div>
+
+
+<ul>
+<li>Backup compression</li>
+</ul>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="ss">&quot;backup database sample to &#39;/db2backup&#39; compress&quot;</span>
+</pre></div>
+
+
+<h2 id="automatic-maintenance">Automatic maintenance</h2>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="k">get</span> <span class="n">db</span> <span class="n">cfg</span> <span class="k">for</span> <span class="n">mysample</span> <span class="o">|</span><span class="n">grep</span> <span class="o">-</span><span class="n">i</span> <span class="n">AUTO_</span>
+<span class="n">Automatic</span> <span class="n">maintenance</span>                      <span class="p">(</span><span class="n">AUTO_MAINT</span><span class="p">)</span> <span class="o">=</span> <span class="k">ON</span>
+<span class="n">Automatic</span> <span class="k">database</span> <span class="n">backup</span>            <span class="p">(</span><span class="n">AUTO_DB_BACKUP</span><span class="p">)</span>   <span class="o">=</span> <span class="k">OFF</span>
+<span class="n">Automatic</span> <span class="k">table</span> <span class="n">maintenance</span>          <span class="p">(</span><span class="n">AUTO_TBL_MAINT</span><span class="p">)</span>   <span class="o">=</span> <span class="k">ON</span>
+<span class="n">Automatic</span> <span class="n">runstats</span>                  <span class="p">(</span><span class="n">AUTO_RUNSTATS</span><span class="p">)</span>     <span class="o">=</span> <span class="k">ON</span>
+<span class="nb">Real</span><span class="o">-</span><span class="n">time</span> <span class="k">statistics</span>            <span class="p">(</span><span class="n">AUTO_STMT_STATS</span><span class="p">)</span>       <span class="o">=</span> <span class="k">ON</span>
+<span class="n">Statistical</span> <span class="n">views</span>              <span class="p">(</span><span class="n">AUTO_STATS_VIEWS</span><span class="p">)</span>       <span class="o">=</span> <span class="k">OFF</span>
+<span class="n">Automatic</span> <span class="n">sampling</span>                <span class="p">(</span><span class="n">AUTO_SAMPLING</span><span class="p">)</span>       <span class="o">=</span> <span class="k">OFF</span>
+<span class="n">Automatic</span> <span class="k">statistics</span> <span class="n">profiling</span>    <span class="p">(</span><span class="n">AUTO_STATS_PROF</span><span class="p">)</span>     <span class="o">=</span> <span class="k">OFF</span>
+<span class="k">Statistics</span> <span class="n">profile</span> <span class="n">updates</span>        <span class="p">(</span><span class="n">AUTO_PROF_UPD</span><span class="p">)</span>       <span class="o">=</span> <span class="k">OFF</span>
+<span class="n">Automatic</span> <span class="n">reorganization</span>               <span class="p">(</span><span class="n">AUTO_REORG</span><span class="p">)</span>     <span class="o">=</span> <span class="k">ON</span>
+</pre></div>
+
+
+<h2 id="configuration-advisor">Configuration advisor</h2>
+<p>Using <code>autoconfigure</code> command to generate advise values, the APPLY NONE means view the configuration recommendation but not apply them.</p>
+<div class="hlcode"><pre><span class="n">db2</span> <span class="ss">&quot;AUTOCONFIGURE USING</span>
+<span class="ss">MEM_PERCENT 60</span>
+<span class="ss">WORKLOAD_TYPE MIXED</span>
+<span class="ss">NUM_STMTS 500</span>
+<span class="ss">ADMIN_PRIORITY BOTH</span>
+<span class="ss">IS_POPULATED YES</span>
+<span class="ss">NUM_LOCAL_APPS 0</span>
+<span class="ss">NUM_REMOTE_APPS 20</span>
+<span class="ss">ISOLATION RR</span>
+<span class="ss">BP_RESIZEABLE YES</span>
+<span class="ss">APPLY NONE</span>
+<span class="ss">&quot;</span>
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

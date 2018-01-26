@@ -1,0 +1,330 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>Oracle Index - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#oracle">oracle</a>
+    &nbsp;&#187;&nbsp;Oracle Index
+    <span class="updated">Last Update: &nbsp;
+    2018-01-15 12:22:20
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#_1">综述</a><ul>
+<li><a href="#oracle">oracle索引的三大特性</a></li>
+<li><a href="#estimate-index-space-cost">Estimate index space cost</a></li>
+<li><a href="#query-index-information-from-dba_indexes-or-dba_ind_columns">Query index information from dba_indexes or dba_ind_columns</a></li>
+<li><a href="#monitoring-index-usage">Monitoring index usage</a></li>
+</ul>
+</li>
+<li><a href="#explainstatistics">Explain中关于statistics</a></li>
+<li><a href="#_2">索引失效的场景</a><ul>
+<li><a href="#cbo">索引有效，但CBO不会选择</a></li>
+<li><a href="#unusable-rebuild-index">索引失效，变成unusable, 需要rebuild index</a></li>
+<li><a href="#select-count">select count(*) 的优化</a></li>
+<li><a href="#table-access-by-index-rowid">索引回表优化(Table access by index rowid)</a></li>
+<li><a href="#index-fast-full-scanindex-full-scan">index fast full scan和index full scan</a></li>
+<li><a href="#union">union 合并的优化</a></li>
+</ul>
+</li>
+<li><a href="#tips">tips</a></li>
+<li><a href="#_3">表的连接</a></li>
+<li><a href="#_4">嵌套循环与索引</a></li>
+<li><a href="#_5">反向索引</a></li>
+<li><a href="#_6">多表连接方式</a><ul>
+<li><a href="#nested-loop">Nested loop</a></li>
+<li><a href="#hash-join">Hash join</a></li>
+<li><a href="#merge-sorted-join">Merge Sorted Join</a></li>
+<li><a href="#oracle-sta">Oracle STA</a><ul>
+<li><a href="#verifying-automatic-job-running">Verifying Automatic job Running</a></li>
+<li><a href="#view-the-maintenance-window-details">view the maintenance window details</a></li>
+</ul>
+</li>
+<li><a href="#index-scans">Index scans</a><ul>
+<li><a href="#index-unique-scan">Index unique scan</a></li>
+<li><a href="#index-range-scan">Index range scan</a></li>
+<li><a href="#index-skip-scan">Index skip scan</a></li>
+<li><a href="#index-full-scan">Index full scan</a></li>
+<li><a href="#index-fast-full-scan">Index fast full scan</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<h1 id="_1">综述</h1>
+<p>SQL查询一般流程：<br />
+SQL &gt; 解析器 &gt; 查询优化器 &gt; 执行计划 &gt; 执行 &gt; 返回<br />
+SQL进来会由解析器进行语法/语义分析，如果出错，返回错误结果；否则进入查询优化器中，优化器会从缓存中(shared pool中的library cache)查找是否有相同的执行计划hash值，如果有，直接将此执行计划给下一步执行(软解析)；否则，优化器会通过一定的规则去生成执行树，并生成最佳的执行计划(选择表的连接顺序，连接方法，访问路径)，然后执行，最后返回结果。</p>
+<p>当一个表及其对应的索引选择数据时，一般对应三种情况：<br />
+index range scan;<br />
+index fast full scan;<br />
+1. 查询所需的所有表的数据都在索引结构中，只需要访问索引块<br />
+2. 查询所需信息没有都包含在索引块中，查询优化器选择既访问索引块也访问数据块<br />
+3. 优化器选择不使用索引，只访问数据块</p>
+<h2 id="oracle">oracle索引的三大特性</h2>
+<ul>
+<li>索引本身有序</li>
+<li>索引存储着索引列的key值和数据块的rowid</li>
+<li>索引树高度比较低</li>
+</ul>
+<h2 id="estimate-index-space-cost">Estimate index space cost</h2>
+<div class="hlcode"><pre><span class="n">SQL</span><span class="o">&gt;</span> <span class="n">exec</span> <span class="n">dbms_stats</span><span class="p">.</span><span class="n">gather_table_stats</span><span class="p">(</span><span class="n">user</span><span class="p">,</span><span class="err">&#39;</span><span class="n">T_MSSM</span><span class="err">&#39;</span><span class="p">);</span>
+<span class="n">SQL</span><span class="o">&gt;</span> <span class="n">variable</span> <span class="n">used_bytes</span> <span class="n">number</span>
+<span class="n">SQL</span><span class="o">&gt;</span> <span class="n">variable</span> <span class="n">allocated_bytes</span> <span class="n">number</span>
+<span class="n">SQL</span><span class="o">&gt;</span> <span class="n">exec</span> <span class="n">dbms_space</span><span class="p">.</span><span class="n">create_index_cost</span><span class="p">(</span><span class="err">&#39;</span><span class="n">create</span> <span class="n">index</span> <span class="n">obj_id</span> <span class="n">on</span> <span class="n">t_mssm</span><span class="p">(</span><span class="n">OBJECT_ID</span><span class="p">)</span><span class="err">&#39;</span><span class="p">,</span> <span class="o">:</span><span class="n">used_bytes</span><span class="p">,</span> <span class="o">:</span><span class="n">allocated_bytes</span><span class="p">);</span>
+<span class="n">SQL</span><span class="o">&gt;</span> <span class="n">print</span> <span class="o">:</span><span class="n">used_bytes</span><span class="p">;</span>
+<span class="n">SQL</span><span class="o">&gt;</span> <span class="n">print</span> <span class="n">allocated_bytes</span><span class="p">;</span>
+</pre></div>
+
+
+<h2 id="query-index-information-from-dba_indexes-or-dba_ind_columns">Query index information from dba_indexes or dba_ind_columns</h2>
+<div class="hlcode"><pre><span class="n">col</span> <span class="n">index_name</span> <span class="k">for</span> <span class="n">a20</span>
+<span class="n">col</span> <span class="n">index_type</span> <span class="k">for</span> <span class="n">a50</span>
+<span class="n">col</span> <span class="n">table_name</span> <span class="k">for</span> <span class="n">a20</span>
+<span class="n">col</span> <span class="n">tablespace_name</span> <span class="k">for</span> <span class="n">a20</span>
+<span class="n">select</span> <span class="n">index_name</span><span class="p">,</span> <span class="n">index_type</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">tablespace_name</span><span class="p">,</span> <span class="n">status</span>
+<span class="n">from</span> <span class="n">dba_indexes</span>
+<span class="n">where</span> <span class="n">table_name</span> <span class="n">in</span> <span class="p">(</span><span class="err">&#39;</span><span class="n">CUST</span><span class="err">&#39;</span><span class="p">,</span> <span class="err">&#39;</span><span class="n">T_MSSM</span><span class="err">&#39;</span><span class="p">);</span>
+<span class="o">--</span><span class="n">get</span> <span class="n">ddl</span>
+<span class="n">select</span> <span class="n">dbms_metadata</span><span class="p">.</span><span class="n">get_ddl</span><span class="p">(</span><span class="err">&#39;</span><span class="n">INDEX</span><span class="err">&#39;</span><span class="p">,</span> <span class="err">&#39;</span><span class="n">OBJ_ID</span><span class="err">&#39;</span><span class="p">)</span> <span class="n">from</span> <span class="n">dual</span><span class="p">;</span>
+</pre></div>
+
+
+<h2 id="monitoring-index-usage">Monitoring index usage</h2>
+<div class="hlcode"><pre><span class="n">alter</span> <span class="n">index</span> <span class="n">fung</span><span class="p">.</span><span class="n">obj_idx</span> <span class="n">monitoring</span> <span class="n">usage</span><span class="p">;</span>
+<span class="n">select</span> <span class="n">index_name</span><span class="p">,</span> <span class="n">monitoring</span><span class="p">,</span> <span class="n">used</span> <span class="n">from</span> <span class="n">v</span><span class="err">$</span><span class="n">object_usage</span><span class="p">;</span>
+<span class="o">--</span><span class="err">监控索引使用方式，如</span><span class="n">fast</span> <span class="n">full</span> <span class="n">scan</span><span class="err">等</span>
+<span class="n">select</span> <span class="n">d</span><span class="p">.</span><span class="n">object_name</span><span class="p">,</span> <span class="n">d</span><span class="p">.</span><span class="n">operation</span><span class="p">,</span> <span class="n">d</span><span class="p">.</span><span class="n">options</span><span class="p">,</span> <span class="n">count</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">from</span> <span class="n">dba_hist_sql_plan</span> <span class="n">d</span><span class="p">,</span> <span class="n">dba_hist_sqlstat</span> <span class="n">h</span>
+<span class="n">where</span> <span class="n">d</span><span class="p">.</span><span class="n">object_owner</span> <span class="o">&lt;&gt;</span> <span class="err">&#39;</span><span class="n">SYS</span><span class="err">&#39;</span> <span class="n">and</span> <span class="n">d</span><span class="p">.</span><span class="n">operation</span> <span class="n">like</span> <span class="err">&#39;</span><span class="o">%</span><span class="n">INDEX</span><span class="o">%</span><span class="err">&#39;</span>
+<span class="n">and</span> <span class="n">d</span><span class="p">.</span><span class="n">sql_id</span> <span class="o">=</span> <span class="n">h</span><span class="p">.</span><span class="n">sql_id</span> <span class="n">group</span> <span class="n">by</span> <span class="n">d</span><span class="p">.</span><span class="n">object_name</span><span class="p">,</span> <span class="n">d</span><span class="p">.</span><span class="n">operation</span><span class="p">,</span> <span class="n">d</span><span class="p">.</span><span class="n">options</span>
+<span class="n">order</span> <span class="n">by</span> <span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">;</span>
+</pre></div>
+
+
+<h1 id="explainstatistics">Explain中关于statistics</h1>
+<ol>
+<li>DB block gets(当前请求的块数目):<br />
+当前模式块意思就是在操作中正好提取的块数目，而不是在一致性读的情况下而产生的块数。正常的情况下，一个查询提取的块是在查询开始的那个时间点上存在的数据块，当前块是在这个时刻存在的数据块，而不是在这个时间点之前或者之后的数据块数目。<br />
+number of data blocks read in CURRENT mode ie) not in a read consistent fashion, but the current version of the data blocks.</li>
+<li>Consistent gets:<br />
+这里的概念是在处理你这个操作的时候需要在一致性读状态上处理多少个块，这些块产生的主要原因是因为由于在你查询的过程中，由于其他会话对数据块进行操作，而对所要查询的块有了修改，但是由于我们的查询是在这些修改之前调用的，所以需要对回滚段中的数据块的前映像进行查询，以保证数据的一致性。这样就产生了一致性读。 不过精确翻译来说，前两个不是块数而是IO请求次数，不过对于这两者应该是一次读一块的。</li>
+<li>Physical read: 磁盘读</li>
+</ol>
+<p>logical reads(内存读) = db block gets + consistent gets</p>
+<h1 id="_2">索引失效的场景</h1>
+<h2 id="cbo">索引有效，但CBO不会选择</h2>
+<ul>
+<li>使用索引代价反而更高</li>
+<li>索引列的类型转换(隐式转换)<ul>
+<li>比如索引列ID为varchar类型，但是where字句中使用了整型"where id = 1"</li>
+</ul>
+</li>
+<li>对索引列进行运算<ul>
+<li>比如索引列ID为number整型， 但是where子句使用了"where id/2 &gt; 30"或者where upper(name)=''</li>
+</ul>
+</li>
+<li>使用" &lt; &gt; ", 'not in', 'not exists', '!='导致索引失效, B-tree index 'is not null'不走索引, 但is null会走</li>
+<li>使用like且%在前</li>
+<li>使用复合索引，但并未使用索引第一列</li>
+<li>将空变量值直接与运算符比较</li>
+</ul>
+<h2 id="unusable-rebuild-index">索引失效，变成unusable, 需要rebuild index</h2>
+<ul>
+<li>LONG类型列调整</li>
+<li>alter table move</li>
+<li>分区表<ul>
+<li>truncate/drop/exchange分区表导致全局索引失效，解决方法：1.全部使用local index；2.truncate/drop/exchange分区时加上update global indexes</li>
+<li>split分区会导致全局索引和局部索引失效，增加update global indexes可以保持全局索引有效, 但local index需要重新rebuild</li>
+</ul>
+</li>
+</ul>
+<h2 id="select-count">select count(*) 的优化</h2>
+<ul>
+<li>考虑到索引列为空是不会走索引，如果有PK值，由于PK不为空，count(*)可以走索引，但如果没有PK，且索引栏位允许为空，此时需要不允许索引列为空才会走索引</li>
+<li>同理，sum/avg都可以用这种方法优化</li>
+<li>如果select count(*)比较多，表更新很少,可以考虑在某个重复量大的栏位创建bitmap index，如status，性别之类的(慎用)</li>
+</ul>
+<h2 id="table-access-by-index-rowid">索引回表优化(Table access by index rowid)</h2>
+<ul>
+<li>取消多余字段，少用select *</li>
+<li>考虑组合索引</li>
+<li>不可避免table access by index rowid的情况，考虑 clustering factor</li>
+</ul>
+<h2 id="index-fast-full-scanindex-full-scan">index fast full scan和index full scan</h2>
+<ul>
+<li>两者都为索引全扫描，从头到尾遍历索引</li>
+<li>fast full scan一次读取多次索引块， index full scan一次只读取一个块，索引fast要快</li>
+<li>由于fast一次读取多次块，不容易保证有序，因此在一些需要排序的查询中，full scan可以消除排序的消耗</li>
+</ul>
+<h2 id="union">union 合并的优化</h2>
+<ul>
+<li>尝试用union all代替union，消除排序</li>
+</ul>
+<h1 id="tips">tips</h1>
+<ul>
+<li>外建约束一定要建索引</li>
+<li>复合索引，当一列是范围查询，一列是等值查询，索引中，通常将等值那一列放在前面，但如果范围查找的那一列经常用到，且重复值少，则需要相反</li>
+<li>范围查询改写为in效率更高</li>
+</ul>
+<h1 id="_3">表的连接</h1>
+<p><strong><em>嵌套循环连接和哈希连接表有驱动顺序，驱动表的顺序不同将影响表连接的性能，而排序合并没有驱动的概念</em></strong><br />
+<strong><em>除了嵌套循环，其他连接都需要排序</em></strong><br />
+<strong><em>哈希连接仅支持等值连接</em></strong></p>
+<h1 id="_4">嵌套循环与索引</h1>
+<ul>
+<li>两表关联返回记录不多</li>
+<li>驱动表的限制条件所在列有索引</li>
+<li>被驱动表的连接条件所在列有索引</li>
+</ul>
+<h1 id="_5">反向索引</h1>
+<ul>
+<li>索引值反过来存储在索引块</li>
+<li>对于RAC索引块竞争，且该索引更新比较频繁，使用等值查询很有效</li>
+<li>不能进行范围查找，如果范围查找频繁，建议使用哈希分区表</li>
+<li>当等待事件出现<code>buffer busy wait</code>, <code>read by other session</code>, 数据块可能存在竞争</li>
+</ul>
+<h1 id="_6">多表连接方式</h1>
+<h2 id="nested-loop">Nested loop</h2>
+<p>访问次数：驱动表返回几条，被驱动表访问多次<br />
+驱动顺序：有<br />
+排序差别：无须排序<br />
+限制场景：无<br />
+索引限制：驱动表限制条件有索引，被驱动表连接条件有索引</p>
+<h2 id="hash-join">Hash join</h2>
+<p>访问次数：最多被访问一次<br />
+驱动顺序：有<br />
+排序差别：无，但是消耗内存的hash_area_size<br />
+限制场景：只能等值查询<br />
+索引限制：索引列在表连接中无特殊要求，跟单表情况一样</p>
+<h2 id="merge-sorted-join">Merge Sorted Join</h2>
+<p>访问次数：最多被访问一次<br />
+驱动顺序：无<br />
+排序差别：需要排序sort_area_size<br />
+限制场景：连接条件为&lt; &gt; like导致无法使用<br />
+索引限制：索引消除排序</p>
+<h2 id="oracle-sta">Oracle STA</h2>
+<h3 id="verifying-automatic-job-running">Verifying Automatic job Running</h3>
+<div class="hlcode"><pre><span class="n">SELECT</span> <span class="n">client_name</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">consumer_group</span>
+<span class="n">FROM</span> <span class="n">dba_autotask_client</span>
+<span class="n">ORDER</span> <span class="n">BY</span> <span class="n">client_name</span><span class="p">;</span>
+</pre></div>
+
+
+<h3 id="view-the-maintenance-window-details">view the maintenance window details</h3>
+<div class="hlcode"><pre><span class="n">SELECT</span> <span class="n">window_name</span><span class="p">,</span><span class="n">TO_CHAR</span><span class="p">(</span><span class="n">window_next_time</span><span class="p">,</span><span class="err">&#39;</span><span class="n">DD</span><span class="o">-</span><span class="n">MON</span><span class="o">-</span><span class="n">YY</span> <span class="n">HH24</span><span class="o">:</span><span class="n">MI</span><span class="o">:</span><span class="n">SS</span><span class="err">&#39;</span><span class="p">)</span>
+<span class="p">,</span><span class="n">sql_tune_advisor</span><span class="p">,</span> <span class="n">optimizer_stats</span><span class="p">,</span> <span class="n">segment_advisor</span>
+<span class="n">FROM</span> <span class="n">dba_autotask_window_clients</span><span class="p">;</span>
+</pre></div>
+
+
+<h2 id="index-scans">Index scans</h2>
+<h3 id="index-unique-scan">Index unique scan</h3>
+<p>等值查询且仅返回一行<br />
+如where子句只有包含PK值, 下例中object_id为PK</p>
+<div class="hlcode"><pre><span class="n">FUNG</span><span class="err">@</span><span class="n">linora</span> <span class="o">&gt;</span> <span class="n">explain</span> <span class="n">plan</span> <span class="k">for</span> <span class="n">select</span> <span class="o">*</span> <span class="n">from</span> <span class="n">test</span> <span class="n">where</span> <span class="n">object_id</span> <span class="o">=</span> <span class="o">:</span><span class="n">B</span><span class="p">;</span>
+<span class="n">FUNG</span><span class="err">@</span><span class="n">linora</span> <span class="o">&gt;</span> <span class="n">select</span> <span class="o">*</span> <span class="n">from</span> <span class="n">table</span><span class="p">(</span><span class="n">dbms_xplan</span><span class="p">.</span><span class="n">display_cursor</span><span class="p">(</span><span class="err">&#39;</span><span class="sc">&#39;,&#39;&#39;,&#39;</span><span class="n">all</span><span class="p">,</span> <span class="n">allstats</span><span class="err">&#39;</span><span class="p">));</span>
+<span class="o">--------------------------------------------------------------------------------------------</span>
+<span class="o">|</span> <span class="n">Id</span>  <span class="o">|</span> <span class="n">Operation</span>                   <span class="o">|</span> <span class="n">Name</span>        <span class="o">|</span> <span class="n">E</span><span class="o">-</span><span class="n">Rows</span> <span class="o">|</span><span class="n">E</span><span class="o">-</span><span class="n">Bytes</span><span class="o">|</span> <span class="n">Cost</span> <span class="p">(</span><span class="o">%</span><span class="n">CPU</span><span class="p">)</span><span class="o">|</span> <span class="n">E</span><span class="o">-</span><span class="n">Time</span>   <span class="o">|</span>
+<span class="o">--------------------------------------------------------------------------------------------</span>
+<span class="o">|</span>   <span class="mi">0</span> <span class="o">|</span> <span class="n">SELECT</span> <span class="n">STATEMENT</span>            <span class="o">|</span>             <span class="o">|</span>      <span class="mi">1</span> <span class="o">|</span>    <span class="mi">89</span> <span class="o">|</span>     <span class="mi">2</span>   <span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">|</span> <span class="mo">00</span><span class="o">:</span><span class="mo">00</span><span class="o">:</span><span class="mo">01</span> <span class="o">|</span>
+<span class="o">|</span>   <span class="mi">1</span> <span class="o">|</span>  <span class="n">TABLE</span> <span class="n">ACCESS</span> <span class="n">BY</span> <span class="n">INDEX</span> <span class="n">ROWID</span><span class="o">|</span> <span class="n">TEST</span>        <span class="o">|</span>      <span class="mi">1</span> <span class="o">|</span>    <span class="mi">89</span> <span class="o">|</span>     <span class="mi">2</span>   <span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">|</span> <span class="mo">00</span><span class="o">:</span><span class="mo">00</span><span class="o">:</span><span class="mo">01</span> <span class="o">|</span>
+<span class="o">|*</span>  <span class="mi">2</span> <span class="o">|</span>   <span class="n">INDEX</span> <span class="n">UNIQUE</span> <span class="n">SCAN</span>         <span class="o">|</span> <span class="n">SYS_C003999</span> <span class="o">|</span>      <span class="mi">1</span> <span class="o">|</span>       <span class="o">|</span>     <span class="mi">1</span>   <span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">|</span> <span class="mo">00</span><span class="o">:</span><span class="mo">00</span><span class="o">:</span><span class="mo">01</span> <span class="o">|</span>
+</pre></div>
+
+
+<h3 id="index-range-scan">Index range scan</h3>
+<p>使用于高选择性的数据，返回的数据是升序的。在col1为组合索引中的leading column情况下，会执行index range scan</p>
+<div class="hlcode"><pre><span class="n">col1</span> <span class="o">=</span> <span class="o">:</span><span class="n">b1</span>
+<span class="n">col1</span> <span class="o">&gt;</span> <span class="o">:</span><span class="n">b1</span>
+<span class="n">col1</span> <span class="o">&lt;</span> <span class="o">:</span><span class="n">b1</span>
+</pre></div>
+
+
+<h3 id="index-skip-scan">Index skip scan</h3>
+<p>当查询一个复合索引且where子句中跳过了leading column时候，会产生index skip scan。下面的例子中，PK为(cust_id, first_name, last_name), 因为where子句只有first_name, 不包含leading column cust_id, 所以产生index skip scan</p>
+<div class="hlcode"><pre><span class="n">FUNG</span><span class="err">@</span><span class="n">linora</span> <span class="o">&gt;</span> <span class="n">explain</span> <span class="n">plan</span> <span class="k">for</span> <span class="n">select</span> <span class="o">*</span> <span class="n">from</span> <span class="n">cust</span> <span class="n">where</span> <span class="n">first_name</span> <span class="o">=:</span><span class="n">B</span><span class="p">;</span>
+<span class="n">FUNG</span><span class="err">@</span><span class="n">linora</span> <span class="o">&gt;</span> <span class="n">select</span> <span class="o">*</span> <span class="n">from</span> <span class="n">table</span><span class="p">(</span><span class="n">dbms_xplan</span><span class="p">.</span><span class="n">display</span><span class="p">(</span><span class="err">&#39;</span><span class="sc">&#39;,&#39;&#39;,&#39;</span><span class="n">all</span><span class="p">,</span> <span class="n">allstats</span><span class="err">&#39;</span><span class="p">));</span>
+<span class="o">-----------------------------------------------------------------------------</span>
+<span class="o">|</span> <span class="n">Id</span>  <span class="o">|</span> <span class="n">Operation</span>        <span class="o">|</span> <span class="n">Name</span>    <span class="o">|</span> <span class="n">E</span><span class="o">-</span><span class="n">Rows</span> <span class="o">|</span><span class="n">E</span><span class="o">-</span><span class="n">Bytes</span><span class="o">|</span> <span class="n">Cost</span> <span class="p">(</span><span class="o">%</span><span class="n">CPU</span><span class="p">)</span><span class="o">|</span> <span class="n">E</span><span class="o">-</span><span class="n">Time</span>   <span class="o">|</span>
+<span class="o">-----------------------------------------------------------------------------</span>
+<span class="o">|</span>   <span class="mi">0</span> <span class="o">|</span> <span class="n">SELECT</span> <span class="n">STATEMENT</span> <span class="o">|</span>         <span class="o">|</span>      <span class="mi">1</span> <span class="o">|</span>    <span class="mi">15</span> <span class="o">|</span>     <span class="mi">1</span>   <span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">|</span> <span class="mo">00</span><span class="o">:</span><span class="mo">00</span><span class="o">:</span><span class="mo">01</span> <span class="o">|</span>
+<span class="o">|*</span>  <span class="mi">1</span> <span class="o">|</span>  <span class="n">INDEX</span> <span class="n">SKIP</span> <span class="n">SCAN</span> <span class="o">|</span> <span class="n">CUST_PK</span> <span class="o">|</span>      <span class="mi">1</span> <span class="o">|</span>    <span class="mi">15</span> <span class="o">|</span>     <span class="mi">1</span>   <span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">|</span> <span class="mo">00</span><span class="o">:</span><span class="mo">00</span><span class="o">:</span><span class="mo">01</span> <span class="o">|</span>
+<span class="o">-----------------------------------------------------------------------------</span>
+</pre></div>
+
+
+<h3 id="index-full-scan">Index full scan</h3>
+<p>如果需要全表扫描，再进行排序的时候，index full scan是一种很好的选择。存在以下情况，会出现index full scan<br />
+<em> 查询需要sort merge join，查询所引用的所有列都在索引中，且索引列顺序相同<br />
+</em> 查询中包含order by，子句中所有列都必须在索引列中<br />
+* 查询包含group by， 索引和group by必须包含相同列，顺序可以不同</p>
+<div class="hlcode"><pre><span class="n">FUNG</span><span class="err">@</span><span class="n">linora</span> <span class="o">&gt;</span> <span class="n">explain</span> <span class="n">plan</span> <span class="k">for</span> <span class="n">select</span> <span class="o">*</span> <span class="n">from</span> <span class="n">test</span> <span class="n">order</span> <span class="n">by</span> <span class="n">object_id</span><span class="p">;</span>
+<span class="n">FUNG</span><span class="err">@</span><span class="n">linora</span> <span class="o">&gt;</span> <span class="n">select</span> <span class="o">*</span> <span class="n">from</span> <span class="n">table</span><span class="p">(</span><span class="n">dbms_xplan</span><span class="p">.</span><span class="n">display</span><span class="p">(</span><span class="err">&#39;</span><span class="sc">&#39;,&#39;&#39;,&#39;</span><span class="n">all</span><span class="p">,</span> <span class="n">allstats</span><span class="err">&#39;</span><span class="p">));</span>
+<span class="o">--------------------------------------------------------------------------------------------</span>
+<span class="o">|</span> <span class="n">Id</span>  <span class="o">|</span> <span class="n">Operation</span>                   <span class="o">|</span> <span class="n">Name</span>        <span class="o">|</span> <span class="n">E</span><span class="o">-</span><span class="n">Rows</span> <span class="o">|</span><span class="n">E</span><span class="o">-</span><span class="n">Bytes</span><span class="o">|</span> <span class="n">Cost</span> <span class="p">(</span><span class="o">%</span><span class="n">CPU</span><span class="p">)</span><span class="o">|</span> <span class="n">E</span><span class="o">-</span><span class="n">Time</span>   <span class="o">|</span>
+<span class="o">--------------------------------------------------------------------------------------------</span>
+<span class="o">|</span>   <span class="mi">0</span> <span class="o">|</span> <span class="n">SELECT</span> <span class="n">STATEMENT</span>            <span class="o">|</span>             <span class="o">|</span>  <span class="mi">14036</span> <span class="o">|</span>  <span class="mi">1219</span><span class="n">K</span><span class="o">|</span>   <span class="mi">241</span>   <span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">|</span> <span class="mo">00</span><span class="o">:</span><span class="mo">00</span><span class="o">:</span><span class="mo">03</span> <span class="o">|</span>
+<span class="o">|</span>   <span class="mi">1</span> <span class="o">|</span>  <span class="n">TABLE</span> <span class="n">ACCESS</span> <span class="n">BY</span> <span class="n">INDEX</span> <span class="n">ROWID</span><span class="o">|</span> <span class="n">TEST</span>        <span class="o">|</span>  <span class="mi">14036</span> <span class="o">|</span>  <span class="mi">1219</span><span class="n">K</span><span class="o">|</span>   <span class="mi">241</span>   <span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">|</span> <span class="mo">00</span><span class="o">:</span><span class="mo">00</span><span class="o">:</span><span class="mo">03</span> <span class="o">|</span>
+<span class="o">|</span>   <span class="mi">2</span> <span class="o">|</span>   <span class="n">INDEX</span> <span class="n">FULL</span> <span class="n">SCAN</span>           <span class="o">|</span> <span class="n">SYS_C003999</span> <span class="o">|</span>  <span class="mi">14036</span> <span class="o">|</span>       <span class="o">|</span>    <span class="mi">29</span>   <span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">|</span> <span class="mo">00</span><span class="o">:</span><span class="mo">00</span><span class="o">:</span><span class="mo">01</span> <span class="o">|</span>
+<span class="o">--------------------------------------------------------------------------------------------</span>
+</pre></div>
+
+
+<h3 id="index-fast-full-scan">Index fast full scan</h3>
+<p>索引本身包含查询中的所有列时，使用index fast full scan</p>
+<div class="hlcode"><pre><span class="n">FUNG</span><span class="err">@</span><span class="n">linora</span> <span class="o">&gt;</span> <span class="n">explain</span> <span class="n">plan</span> <span class="k">for</span> <span class="n">select</span> <span class="n">count</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="n">from</span> <span class="n">test</span><span class="p">;</span>
+<span class="n">FUNG</span><span class="err">@</span><span class="n">linora</span> <span class="o">&gt;</span> <span class="n">select</span> <span class="o">*</span> <span class="n">from</span> <span class="n">table</span><span class="p">(</span><span class="n">dbms_xplan</span><span class="p">.</span><span class="n">display</span><span class="p">(</span><span class="err">&#39;</span><span class="sc">&#39;,&#39;&#39;,&#39;</span><span class="n">all</span><span class="p">,</span> <span class="n">allstats</span><span class="err">&#39;</span><span class="p">));</span>
+<span class="o">------------------------------------------------------------------------------</span>
+<span class="o">|</span> <span class="n">Id</span>  <span class="o">|</span> <span class="n">Operation</span>             <span class="o">|</span> <span class="n">Name</span>        <span class="o">|</span> <span class="n">E</span><span class="o">-</span><span class="n">Rows</span> <span class="o">|</span> <span class="n">Cost</span> <span class="p">(</span><span class="o">%</span><span class="n">CPU</span><span class="p">)</span><span class="o">|</span> <span class="n">E</span><span class="o">-</span><span class="n">Time</span>   <span class="o">|</span>
+<span class="o">------------------------------------------------------------------------------</span>
+<span class="o">|</span>   <span class="mi">0</span> <span class="o">|</span> <span class="n">SELECT</span> <span class="n">STATEMENT</span>      <span class="o">|</span>             <span class="o">|</span>      <span class="mi">1</span> <span class="o">|</span>     <span class="mi">9</span>   <span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">|</span> <span class="mo">00</span><span class="o">:</span><span class="mo">00</span><span class="o">:</span><span class="mo">01</span> <span class="o">|</span>
+<span class="o">|</span>   <span class="mi">1</span> <span class="o">|</span>  <span class="n">SORT</span> <span class="n">AGGREGATE</span>       <span class="o">|</span>             <span class="o">|</span>      <span class="mi">1</span> <span class="o">|</span>            <span class="o">|</span>          <span class="o">|</span>
+<span class="o">|</span>   <span class="mi">2</span> <span class="o">|</span>   <span class="n">INDEX</span> <span class="n">FAST</span> <span class="n">FULL</span> <span class="n">SCAN</span><span class="o">|</span> <span class="n">SYS_C003999</span> <span class="o">|</span>  <span class="mi">14036</span> <span class="o">|</span>     <span class="mi">9</span>   <span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">|</span> <span class="mo">00</span><span class="o">:</span><span class="mo">00</span><span class="o">:</span><span class="mo">01</span> <span class="o">|</span>
+<span class="o">------------------------------------------------------------------------------</span>
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

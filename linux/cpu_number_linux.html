@@ -1,0 +1,77 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>Finding CPU numbers in Linux - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#linux">linux</a>
+    &nbsp;&#187;&nbsp;Finding CPU numbers in Linux
+    <span class="updated">Last Update: &nbsp;
+    2018-01-16 16:41:37
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <h3 id="the-physical-cpus">The physical CPUs</h3>
+<div class="hlcode"><pre><span class="o">|</span><span class="n">Thu</span> <span class="n">Jun</span> <span class="mi">16</span> <span class="mi">14</span><span class="o">:</span><span class="mi">54</span><span class="o">:</span><span class="mi">45</span><span class="o">|</span> <span class="p">[</span><span class="n">kingsley</span><span class="err">@</span><span class="n">oc7421025535</span> <span class="o">~:</span><span class="p">(</span><span class="mi">42</span><span class="p">)]</span>
+<span class="err">$</span> <span class="n">grep</span> <span class="err">&#39;</span><span class="n">physical</span> <span class="n">id</span><span class="err">&#39;</span> <span class="o">/</span><span class="n">proc</span><span class="o">/</span><span class="n">cpuinfo</span> <span class="o">|</span> <span class="n">sort</span> <span class="o">-</span><span class="n">u</span> <span class="o">|</span> <span class="n">wc</span> <span class="o">-</span><span class="n">l</span>
+<span class="mi">1</span>
+</pre></div>
+
+
+<h3 id="the-core-numbers">The core numbers</h3>
+<div class="hlcode"><pre><span class="o">|</span><span class="n">Thu</span> <span class="n">Jun</span> <span class="mi">16</span> <span class="mi">15</span><span class="o">:</span><span class="mi">39</span><span class="o">:</span><span class="mi">19</span><span class="o">|</span> <span class="p">[</span><span class="n">kingsley</span><span class="err">@</span><span class="n">oc7421025535</span> <span class="o">~:</span><span class="p">(</span><span class="mi">42</span><span class="p">)]</span>
+<span class="err">$</span> <span class="n">grep</span> <span class="err">&#39;</span><span class="n">core</span> <span class="n">id</span><span class="err">&#39;</span> <span class="o">/</span><span class="n">proc</span><span class="o">/</span><span class="n">cpuinfo</span> <span class="o">|</span> <span class="n">sort</span> <span class="o">-</span><span class="n">u</span> <span class="o">|</span> <span class="n">wc</span> <span class="o">-</span><span class="n">l</span>
+<span class="mi">2</span>
+</pre></div>
+
+
+<h3 id="the-thread-numbers">The thread numbers</h3>
+<div class="hlcode"><pre><span class="o">|</span><span class="n">Thu</span> <span class="n">Jun</span> <span class="mi">16</span> <span class="mi">15</span><span class="o">:</span><span class="mi">40</span><span class="o">:</span><span class="mo">07</span><span class="o">|</span> <span class="p">[</span><span class="n">kingsley</span><span class="err">@</span><span class="n">oc7421025535</span> <span class="o">~:</span><span class="p">(</span><span class="mi">42</span><span class="p">)]</span>
+<span class="err">$</span> <span class="n">grep</span> <span class="err">&#39;</span><span class="n">processor</span><span class="err">&#39;</span> <span class="o">/</span><span class="n">proc</span><span class="o">/</span><span class="n">cpuinfo</span> <span class="o">|</span> <span class="n">sort</span> <span class="o">-</span><span class="n">u</span> <span class="o">|</span> <span class="n">wc</span> <span class="o">-</span><span class="n">l</span>
+<span class="mi">4</span>
+</pre></div>
+
+
+<p>From above 3 outputs, we can know this machine has one physical CPU, each have 2 cores, each core have 2 threads.</p>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

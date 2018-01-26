@@ -1,0 +1,211 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>Oracle Concept - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#oracle">oracle</a>
+    &nbsp;&#187;&nbsp;Oracle Concept
+    <span class="updated">Last Update: &nbsp;
+    2018-01-15 11:29:46
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#1">1. 数据库是如何实现一致性的</a><ul>
+<li><a href="#11-oracle">1.1 Oracle多版本并发控制</a></li>
+<li><a href="#12-oracle-undo">1.2 Oracle UNDO机制</a></li>
+</ul>
+</li>
+<li><a href="#2">2. 事务隔离级别</a><ul>
+<li><a href="#21">2.1 事务隔离级别及并发可能导致的问题</a><ul>
+<li><a href="#211">2.1.1 并发事务需要解决的问题</a></li>
+<li><a href="#212">2.1.2 事务隔离级别</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#3-oracle">3. Oracle事务锁机制</a><ul>
+<li><a href="#31-dml-lock">3.1 DML lock:保护数据的完整性</a></li>
+<li><a href="#32-ddl-lock">3.2 DDL lock:保护数据库对象的结构</a></li>
+</ul>
+</li>
+<li><a href="#4">4. 多表连接方式</a><ul>
+<li><a href="#41-nested-loop">4.1 Nested loop</a></li>
+<li><a href="#42-hash-join">4.2 Hash join</a></li>
+<li><a href="#43-merge-sorted-join">4.3 Merge Sorted Join</a></li>
+</ul>
+</li>
+<li><a href="#5-dataguard">5. DataGuard</a><ul>
+<li><a href="#51-max-protection">5.1 Max Protection</a></li>
+<li><a href="#52-max-availability">5.2 Max Availability</a></li>
+<li><a href="#53-max-performance">5.3 Max Performance</a></li>
+</ul>
+</li>
+<li><a href="#6-rman">6. RMAN完全恢复和不完全恢复</a></li>
+<li><a href="#7-rac">7. RAC缓存融合</a></li>
+<li><a href="#8-vsql-vsqlarea">8. v$sql v$sqlarea</a></li>
+</ul>
+</div>
+<h1 id="1">1. 数据库是如何实现一致性的</h1>
+<ul>
+<li>
+<p>事务一致性，即原子性，一个事务的所有操作要么都成功，要么都不成功。数据库通过先写日志的方式来保证此功能。如在事务处理过程中，遇到意外导致事务中断，通过在日志<br />
+中记录的顺序去回滚这些尚未提交的事务，如果已经提交但没有被写入磁盘的，此时也会进行前滚，把数据写入磁(持久性).</p>
+</li>
+<li>
+<p>Oracle 利用多版本一致性模型（multiversion consistency model），各种类型的锁及事务来管理多用户系统中的数据一致性（data consistency）。</p>
+</li>
+</ul>
+<h2 id="11-oracle">1.1 Oracle多版本并发控制</h2>
+<p>Oracle 能够自动地实现一个查询的读一致性，即一个查询所获得的数据来自同一时间点（single point in time）（这也被称为语句级读一致性（statement-level read consiste<br />
+ncy））。Oracle 还能令一个事务内的所有查询都具备读一致性（即事务级读一致性（transaction-level read consistency））。</p>
+<p>Oracle 利用回滚段中的信息生成一个能保证一致性的数据视图。回滚段内保存了未提交或最近提交的事务中所修改数据的原值.</p>
+<h2 id="12-oracle-undo">1.2 Oracle UNDO机制</h2>
+<p>UNDO作用：<br />
+1、回滚，rollback时<br />
+2、构造CR块，提供读一致性<br />
+3、回滚，实例恢复的时候</p>
+<h1 id="2">2. 事务隔离级别</h1>
+<h2 id="21">2.1 事务隔离级别及并发可能导致的问题</h2>
+<h3 id="211">2.1.1 并发事务需要解决的问题</h3>
+<ul>
+<li>1.1 更新丢失 lost update<ul>
+<li>第一类更新丢失： 回滚覆盖，撤销一个事务，该事务内的写操作要回滚，把其他已提交事务写入的数据覆盖了。</li>
+<li>第二类更新丢失： 提交覆盖，一个事务提交，写操作依赖于事务内读到的数据，读发生在其他事务提交前，写发生在其他事务提交后，把其他已经提交的事务写入的数据覆<br />
+盖了。这也是不可重复读的特例。</li>
+</ul>
+</li>
+<li>1.2 脏读 dirty read<br />
+    一个事务读到了其他事务没提交的数据。</li>
+<li>1.3 不可重复读 non-repeatable-read<br />
+    一个事务中，两次读到同一行数据不一致。</li>
+<li>1.4 幻读 phantom read<br />
+    一个事务中两次查询，结果差了或者多了几行/几列</li>
+</ul>
+<h3 id="212">2.1.2 事务隔离级别</h3>
+<ul>
+<li>2.1 Read Uncommitted, 读未提交：不允许第一类更新丢失，允许脏读，不隔离事务。</li>
+<li>2.2 Read Committed, 读已提交： 不允许脏读，允许不可重复读。</li>
+<li>2.3 Repeatable Read, 可重复读： 不允许不可重复读，但可能出现幻读。</li>
+<li>2.4 Serializable, 串行化， 所有DML串行化</li>
+</ul>
+<p>事务隔离级别是为了解决并发过程中遇到的脏读，不可重复读和幻读。</p>
+<h1 id="3-oracle">3. Oracle事务锁机制</h1>
+<p>在数据库中有两种基本的锁类型：排它锁（Exclusive Locks，即X锁）和共享锁（Share Locks，即S锁）。当数据对象被加上排它锁时，其他的事务不能对它读取和修改。加了共享<br />
+锁的数据对象可以被其他事务读取，但不能修改。数据库利用这两种基本的锁类型来对数据库的事务进行并发控制。</p>
+<div class="hlcode"><pre><span class="n">LMODE</span><span class="err">取值</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span> <span class="err">数字越大锁级别越高</span><span class="p">,</span> <span class="err">影响的操作越多。</span>
+<span class="mi">1</span><span class="err">级锁：</span>
+<span class="n">Select</span><span class="err">，有时会在</span><span class="n">v</span><span class="err">$</span><span class="n">locked_object</span><span class="err">出现。</span>
+<span class="mi">2</span><span class="err">级锁即</span><span class="n">RS</span><span class="err">锁</span>
+<span class="err">相应的</span><span class="n">sql</span><span class="err">有：</span><span class="n">Select</span> <span class="k">for</span> <span class="n">update</span> <span class="p">,</span><span class="n">Lock</span> <span class="n">xxx</span> <span class="n">in</span>  <span class="n">Row</span> <span class="n">Share</span> <span class="n">mode</span><span class="err">，</span><span class="n">select</span> <span class="k">for</span> <span class="n">update</span><span class="err">当对</span>
+<span class="err">话使用</span><span class="k">for</span> <span class="n">update</span><span class="err">子串打开一个游标时，所有返回集中的数据行都将处于行级</span><span class="p">(</span><span class="n">Row</span><span class="o">-</span><span class="n">X</span><span class="p">)</span><span class="err">独</span>
+<span class="err">占式锁定，其他对象只能查询这些数据行，不能进行</span><span class="n">update</span><span class="err">、</span><span class="n">delete</span><span class="err">或</span><span class="n">select</span> <span class="k">for</span> <span class="n">update</span> <span class="err">操作。</span>
+<span class="mi">3</span><span class="err">级锁即</span><span class="n">RX</span><span class="err">锁</span>
+<span class="err">相应的</span><span class="n">sql</span><span class="err">有：</span><span class="n">Insert</span><span class="p">,</span> <span class="n">Update</span><span class="p">,</span> <span class="n">Delete</span><span class="p">,</span> <span class="n">Lock</span> <span class="n">xxx</span> <span class="n">in</span> <span class="n">Row</span> <span class="n">Exclusive</span> <span class="n">mode</span><span class="err">，没有</span><span class="n">commit</span>
+<span class="err">之前插入同样的一条记录会没有反应</span><span class="p">,</span> <span class="err">因为后一个</span><span class="mi">3</span><span class="err">的锁会一直等待上一个</span><span class="mi">3</span><span class="err">的锁</span><span class="p">,</span> <span class="err">我们</span>
+<span class="err">必须释放掉上一个才能继续工作。</span>
+<span class="mi">4</span><span class="err">级锁即</span><span class="n">S</span><span class="err">锁</span>
+<span class="err">相应的</span><span class="n">sql</span><span class="err">有：</span><span class="n">Create</span> <span class="n">Index</span><span class="p">,</span> <span class="n">Lock</span> <span class="n">xxx</span> <span class="n">in</span> <span class="n">Share</span> <span class="n">mode</span>
+<span class="mi">5</span><span class="err">级锁即</span><span class="n">SRX</span><span class="err">锁</span>
+<span class="err">相应的</span><span class="n">sql</span><span class="err">有：</span><span class="n">Lock</span> <span class="n">xxx</span> <span class="n">in</span> <span class="n">Share</span> <span class="n">Row</span> <span class="n">Exclusive</span> <span class="n">mode</span><span class="err">，当有主外键约束时</span><span class="n">update</span><span class="o">/</span><span class="n">delete</span> <span class="p">...</span> <span class="p">;</span> <span class="err">可能会产生</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="err">的锁。</span>
+<span class="mi">6</span><span class="err">级锁即</span><span class="n">X</span><span class="err">锁</span>
+<span class="err">相应的</span><span class="n">sql</span><span class="err">有：</span><span class="n">Alter</span> <span class="n">table</span><span class="p">,</span> <span class="n">Drop</span> <span class="n">table</span><span class="p">,</span> <span class="n">Drop</span> <span class="n">Index</span><span class="p">,</span> <span class="n">Truncate</span> <span class="n">table</span><span class="p">,</span> <span class="n">Lock</span> <span class="n">xxx</span> <span class="n">in</span> <span class="n">Exclusive</span> <span class="n">mode</span>
+</pre></div>
+
+
+<h2 id="31-dml-lock">3.1 DML lock:保护数据的完整性</h2>
+<ul>
+<li>TX: Transaction eXclusive<br />
+    在Oracle的每行数据上，都有一个标志位来表示该行数据是否被锁定。Oracle不像DB2那样，建立一个链表来维护每一行被加锁的数据，这样就大大减小了行级锁的维护开销，<br />
+也在很大程度上避免了类似DB2使用行级锁时经常发生的锁数量不够而进行锁升级的情况。数据行上的锁标志一旦被置位，就表明该行数据被加X锁，Oracle在数据行上没有S锁。</li>
+<li>TM: DML Enqueue, 保证表结构不被改变<br />
+Oracle数据库的一个显著特点是，在缺省情况下，单纯地读数据（SELECT）并不加锁，Oracle通过回滚段（Rollback segment）来保证用户不读"脏"数据。这些都提高了系统的并发<br />
+程度。</li>
+</ul>
+<h2 id="32-ddl-lock">3.2 DDL lock:保护数据库对象的结构</h2>
+<h1 id="4">4. 多表连接方式</h1>
+<h2 id="41-nested-loop">4.1 Nested loop</h2>
+<p>访问次数：驱动表返回几条，被驱动表访问多次<br />
+驱动顺序：有<br />
+排序差别：无须排序<br />
+限制场景：无<br />
+索引限制：驱动表限制条件有索引，被驱动表连接条件有索引</p>
+<h2 id="42-hash-join">4.2 Hash join</h2>
+<p>访问次数：最多被访问一次<br />
+驱动顺序：有<br />
+排序差别：无，但是消耗内存的hash_area_size<br />
+限制场景：只能等值查询<br />
+索引限制：索引列在表连接中无特殊要求，跟单表情况一样</p>
+<h2 id="43-merge-sorted-join">4.3 Merge Sorted Join</h2>
+<p>访问次数：最多被访问一次<br />
+驱动顺序：无<br />
+排序差别：需要排序sort_area_size<br />
+限制场景：连接条件为&lt; &gt; like导致无法使用<br />
+索引限制：索引消除排序</p>
+<h1 id="5-dataguard">5. DataGuard</h1>
+<h2 id="51-max-protection">5.1 Max Protection</h2>
+<p>当事务提交时，日志必须同时写到primary和至少一个standby，以保证数据实时同步。但：1.会影响primary性能；2.当日志无法同步到standby，primary会被强制shutdown</p>
+<h2 id="52-max-availability">5.2 Max Availability</h2>
+<p>正常情况下，跟Max Protection一样，但当日志无法同步到standby时，会以最大性能模式工作，当所有日志同步到standby时候，又切换回最大保护模式。</p>
+<h2 id="53-max-performance">5.3 Max Performance</h2>
+<p>当primary日志无法传递到standby的时候，primary不受影响，且会不断尝试向standby传输日志，直至成功。保证了primary的性能，但存在数据丢失的风险。可尝试部署监控脚本<br />
+定时检查GAP，以减少数据丢失的风险</p>
+<h1 id="6-rman">6. RMAN完全恢复和不完全恢复</h1>
+<p>完全恢复一般用于物理介质故障，如介质失败，磁盘或者数据文件故障；不完全恢复一般用于逻辑业务故障，如用户误删除关键业务数据，或者用于日志不全的情况下的恢复，比如<br />
+丢失数据文件，要做完全恢复，发现部分归档已经无法使用。此时只能恢复到可用归档日志的那一刻时间点。通过RMAN完全恢复，可以将数据库恢复到失败点状态；通过RMAN不完全<br />
+恢复，可以将数据库恢复到备份点与失败点之间某个时刻的状态。</p>
+<p>完全恢复意味着你能恢复所有在失败前已提交的事务。因此，完全恢复是不需要将所有数据文件都还原并且恢复的。我们需要做的只是恢复那些损坏了的数据文件。Oracle通过对比<br />
+控制文件中的SCN值和dafatile header中的SCN值来确定哪些数据文件需要被恢复。</p>
+<p>不完全恢复意味着不是所有已提交事务都能进行恢复，所以肯定丢失部分数据。不完全恢复一般用在指定时间点的恢复，由于误操作而导致的数据丢失，可以采用不完全恢复至数据<br />
+删除前一刻。不完全恢复是通过指定recover database until命令进行的。所以不完全恢复也被称之为基于时间点的恢复(database point-in-time recovery)。</p>
+<h1 id="7-rac">7. RAC缓存融合</h1>
+<p>Cache Fusion 就是通过互联网络（高速的 Private interconnect）在集群内各节点的 SGA 之间进行块传递，这是RAC最核心的工作机制，他把所有实例的SGA虚拟成一个大的SGA区<br />
+，每当不同的实例请求相同的数据块时，这个数据块就通过 Private interconnect 在实例间进行传递。</p>
+<h1 id="8-vsql-vsqlarea">8. v$sql v$sqlarea</h1>
+<ul>
+<li>v$sql是从parent cursor级别统计sql的执行信息</li>
+<li>v$sqlarea是从child cursor级别统计sql的执行信息</li>
+</ul>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

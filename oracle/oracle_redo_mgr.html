@@ -1,0 +1,176 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>Redo log files management - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#oracle">oracle</a>
+    &nbsp;&#187;&nbsp;Redo log files management
+    <span class="updated">Last Update: &nbsp;
+    2018-01-18 10:55:52
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#displaying-online-redo-log-information">Displaying online redo log information</a></li>
+<li><a href="#status-for-online-redo-log-groups-in-the-vlog-view">Status for Online Redo-Log Groups in the V$LOG View</a></li>
+<li><a href="#determining-the-optimal-size-of-online-redo-log-groups">Determining the Optimal Size of Online Redo-Log Groups</a><ul>
+<li><a href="#archive_lag_target-parameter">archive_lag_target parameter</a></li>
+<li><a href="#checkpoint-not-complete-warning">Checkpoint not complete warning</a></li>
+</ul>
+</li>
+<li><a href="#adding-online-redo-log-groups">Adding Online Redo-Log Groups</a></li>
+</ul>
+</div>
+<h2 id="displaying-online-redo-log-information">Displaying online redo log information</h2>
+<div class="hlcode"><pre><span class="n">select</span>
+<span class="n">a</span><span class="p">.</span><span class="n">group</span><span class="err">#</span><span class="p">,</span><span class="n">a</span><span class="p">.</span><span class="n">member</span><span class="p">,</span><span class="n">b</span><span class="p">.</span><span class="n">status</span><span class="p">,</span><span class="n">b</span><span class="p">.</span><span class="n">archived</span><span class="p">,</span><span class="n">bytes</span><span class="o">/</span><span class="mi">1024</span><span class="o">/</span><span class="mi">1024</span>
+<span class="n">mbytes</span>
+<span class="n">from</span> <span class="n">v</span><span class="err">$</span><span class="n">logfile</span> <span class="n">a</span><span class="p">,</span> <span class="n">v</span><span class="err">$</span><span class="n">log</span> <span class="n">b</span>
+<span class="n">where</span> <span class="n">a</span><span class="p">.</span><span class="n">group</span><span class="err">#</span> <span class="o">=</span> <span class="n">b</span><span class="p">.</span><span class="n">group</span><span class="err">#</span>
+<span class="n">order</span> <span class="n">by</span> <span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">;</span>
+</pre></div>
+
+
+<p>-- output</p>
+<div class="hlcode"><pre>    GROUP# MEMBER                                                                           STATUS    ARCHIVED     MBYTES
+---------- -------------------------------------------------------------------------------- --------- -------- ----------
+         1 /u01/app/oracle/oradata/LINORA/onlinelog/o1_mf_1_chkysp87_.log                   CURRENT   NO               50
+         2 /u01/app/oracle/oradata/LINORA/onlinelog/o1_mf_2_chkyspbq_.log                   INACTIVE  YES              50
+         3 /u01/app/oracle/oradata/LINORA/onlinelog/o1_mf_3_chkyspd6_.log                   INACTIVE  YES              50
+</pre></div>
+
+
+<h2 id="status-for-online-redo-log-groups-in-the-vlog-view">Status for Online Redo-Log Groups in the V$LOG View</h2>
+<table>
+<thead>
+<tr>
+<th>status</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Current</td>
+<td>当前活动日志</td>
+</tr>
+<tr>
+<td>Active</td>
+<td>Crash recovery所需日志，可能已归档或者尚未归档</td>
+</tr>
+<tr>
+<td>Clearing</td>
+<td>'alter database clear logfile'命令正在clear log</td>
+</tr>
+<tr>
+<td>Clearing_current</td>
+<td>The current log group is being cleared of a closed CLEARING_CURRENT thread.</td>
+</tr>
+<tr>
+<td>INACTIVE</td>
+<td>Crash recovery不需要用到此日志，可能已归档或尚未归档</td>
+</tr>
+<tr>
+<td>UNUSED</td>
+<td>最近新建尚未使用的日志</td>
+</tr>
+</tbody>
+</table>
+<h2 id="determining-the-optimal-size-of-online-redo-log-groups">Determining the Optimal Size of Online Redo-Log Groups</h2>
+<div class="hlcode"><pre><span class="o">--</span> <span class="n">Purpose</span><span class="o">:</span> <span class="n">Showing</span> <span class="n">the</span> <span class="n">log</span> <span class="k">switch</span> <span class="n">frequency</span>
+<span class="o">--</span> <span class="n">name</span><span class="o">:</span> <span class="n">log_frequency</span><span class="p">.</span><span class="n">sql</span>
+<span class="o">--</span> <span class="n">from</span><span class="o">:</span>
+<span class="n">COL</span> <span class="n">DAY</span> <span class="n">FORMAT</span> <span class="n">a15</span><span class="p">;</span>
+<span class="n">COL</span> <span class="n">HOUR</span> <span class="n">FORMAT</span> <span class="n">a4</span><span class="p">;</span>
+<span class="n">COL</span> <span class="n">TOTAL</span> <span class="n">FORMAT</span> <span class="mi">999</span><span class="p">;</span>
+<span class="n">SELECT</span> <span class="n">TO_CHAR</span><span class="p">(</span><span class="n">FIRST_TIME</span><span class="p">,</span><span class="err">&#39;</span><span class="n">YYYY</span><span class="o">-</span><span class="n">MM</span><span class="o">-</span><span class="n">DD</span><span class="err">&#39;</span><span class="p">)</span> <span class="n">DAY</span><span class="p">,</span>
+<span class="n">TO_CHAR</span><span class="p">(</span><span class="n">FIRST_TIME</span><span class="p">,</span><span class="err">&#39;</span><span class="n">HH24</span><span class="err">&#39;</span><span class="p">)</span> <span class="n">HOUR</span><span class="p">,</span>
+<span class="n">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="n">TOTAL</span>
+<span class="n">FROM</span> <span class="n">V</span><span class="err">$</span><span class="n">LOG_HISTORY</span>
+<span class="n">GROUP</span> <span class="n">BY</span> <span class="n">TO_CHAR</span><span class="p">(</span><span class="n">FIRST_TIME</span><span class="p">,</span><span class="err">&#39;</span><span class="n">YYYY</span><span class="o">-</span><span class="n">MM</span><span class="o">-</span><span class="n">DD</span><span class="err">&#39;</span><span class="p">),</span><span class="n">TO_CHAR</span><span class="p">(</span><span class="n">FIRST_TIME</span><span class="p">,</span><span class="err">&#39;</span><span class="n">HH24</span><span class="err">&#39;</span><span class="p">)</span>
+<span class="n">ORDER</span> <span class="n">BY</span> <span class="n">TO_CHAR</span><span class="p">(</span><span class="n">FIRST_TIME</span><span class="p">,</span><span class="err">&#39;</span><span class="n">YYYY</span><span class="o">-</span><span class="n">MM</span><span class="o">-</span><span class="n">DD</span><span class="err">&#39;</span><span class="p">),</span><span class="n">TO_CHAR</span><span class="p">(</span><span class="n">FIRST_TIME</span><span class="p">,</span><span class="err">&#39;</span><span class="n">HH24</span><span class="err">&#39;</span><span class="p">)</span>
+<span class="n">ASC</span><span class="p">;</span>
+</pre></div>
+
+
+<h3 id="archive_lag_target-parameter"><code>archive_lag_target</code> parameter</h3>
+<p><code>archive_lag_target</code> 指定时间定时去进行log switch，在dataguard中可以调整此参数，使得归档日志可以及时传送到standby中。同时，结合<code>v$instance_recovery</code>中<code>optimal_logfile_size</code>可以参考redo log大小设置是否合适, Oracle官方建议redo log大小至少要跟<code>OPTIMAL_LOGFILE_SIZE</code>相当。</p>
+<h3 id="checkpoint-not-complete-warning">Checkpoint not complete warning</h3>
+<p>告警日志发现这个问题，可以考虑:</p>
+<ul>
+<li>增加日志组, 最容易实现，受限于控制文件中的<code>MAXLOGFILES</code>，增加的日志文件要和原来大小一致</li>
+<li>降低FAST_START_MTTR_TARGET</li>
+<li>增加DB_WRITER_PROCESSES</li>
+</ul>
+<h2 id="adding-online-redo-log-groups">Adding Online Redo-Log Groups</h2>
+<ul>
+<li>OMF</li>
+</ul>
+<div class="hlcode"><pre><span class="n">alter</span> <span class="n">database</span> <span class="n">add</span> <span class="n">logfile</span> <span class="n">group</span> <span class="mi">4</span> <span class="n">size</span> <span class="mi">100</span><span class="n">M</span><span class="p">;</span>
+</pre></div>
+
+
+<ul>
+<li>Non-OMF</li>
+</ul>
+<div class="hlcode"><pre><span class="n">alter</span> <span class="n">database</span> <span class="n">add</span> <span class="n">logfile</span> <span class="n">group</span> <span class="mi">4</span>
+<span class="p">(</span><span class="err">&#39;</span><span class="o">/</span><span class="n">u01</span><span class="o">/</span><span class="n">app</span><span class="o">/</span><span class="n">oracle</span><span class="o">/</span><span class="n">oradata</span><span class="o">/</span><span class="n">LINORA</span><span class="o">/</span><span class="n">onlinelog</span><span class="o">/</span><span class="n">redo04a</span><span class="p">.</span><span class="n">rdo</span><span class="err">&#39;</span><span class="p">,</span>
+<span class="err">&#39;</span><span class="o">/</span><span class="n">u01</span><span class="o">/</span><span class="n">app</span><span class="o">/</span><span class="n">oracle</span><span class="o">/</span><span class="n">oradata</span><span class="o">/</span><span class="n">LINORA</span><span class="o">/</span><span class="n">onlinelog</span><span class="o">/</span><span class="n">redo04b</span><span class="p">.</span><span class="n">rdo</span><span class="err">&#39;</span>
+<span class="p">)</span>  <span class="n">size</span> <span class="mi">100</span><span class="n">M</span><span class="p">;</span>
+</pre></div>
+
+
+<p><strong><em>TIPS: redo log不能像data file一样可以直接在线扩充，它只能通过增加group，然后切换，最后删除原有日志组。</em></strong><br />
+大致步骤：</p>
+<ul>
+<li>add online redo log group</li>
+<li>alter system switch logfile</li>
+<li>alter system checkpoint</li>
+<li>drop old online redo group once confirm it's archived and inactive<ul>
+<li>alter database drop logfile group 1;</li>
+</ul>
+</li>
+<li>alter database backup controlfile to trace resetlogs</li>
+</ul>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

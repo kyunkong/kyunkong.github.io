@@ -1,0 +1,244 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>SQL Tuning - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#oracle">oracle</a>
+    &nbsp;&#187;&nbsp;SQL Tuning
+    <span class="updated">Last Update: &nbsp;
+    2018-01-22 16:55:27
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#parent-cursor-child-cursor">Parent Cursor &amp; Child Cursor</a></li>
+<li><a href="#life-cycle-of-a-cursor">Life Cycle of a Cursor</a></li>
+<li><a href="#how-parsing-work">How Parsing work</a></li>
+<li><a href="#binding-peeking">Binding peeking</a></li>
+<li><a href="#adaptive-cursor-sharing">Adaptive Cursor Sharing</a></li>
+<li><a href="#obtain-execution-plan">Obtain execution plan</a><ul>
+<li><a href="#explain-plan-for">explain plan for</a></li>
+<li><a href="#query-dynamic-performance-view">Query dynamic performance view</a></li>
+<li><a href="#awrstatspack">AWR/Statspack</a></li>
+<li><a href="#trace-facility">Trace facility</a></li>
+</ul>
+</li>
+<li><a href="#dbms_xplan">dbms_xplan</a><ul>
+<li><a href="#display_cursor">display_cursor</a></li>
+<li><a href="#display_awr">display_awr</a></li>
+</ul>
+</li>
+<li><a href="#execution-plan-output">Execution plan output</a></li>
+<li><a href="#how-to-read-execution-plan">How to read execution plan</a></li>
+</ul>
+</div>
+<p><strong><em>Excerpt from Troubleshooting Oracle Performance</em></strong></p>
+<h2 id="parent-cursor-child-cursor">Parent Cursor &amp; Child Cursor</h2>
+<p>父游标主要存储跟游标有关的SQL文本, 子游标主要存储执行环境，如优化器模式等，及执行计划。这些元素指定oracle是如何去执行一个SQL语句的。共享游标存储在shared poll中的library cache中。</p>
+<p>如：</p>
+<div class="hlcode"><pre><span class="n">SQL1</span><span class="o">:</span> <span class="n">select</span> <span class="o">*</span> <span class="n">from</span> <span class="n">emp</span> <span class="n">where</span> <span class="n">emp_no</span> <span class="o">=</span> <span class="s1">&#39;1000&#39;</span><span class="o">;</span>
+<span class="n">SQL2</span><span class="o">:</span> <span class="n">SELECT</span> <span class="o">*</span> <span class="n">FROM</span> <span class="n">EMP</span> <span class="n">WHERE</span> <span class="n">EMP_NO</span> <span class="o">=</span> <span class="s1">&#39;1000&#39;</span><span class="o">;</span>
+</pre></div>
+
+
+<p>分属不同父游标。</p>
+<div class="hlcode"><pre><span class="n">SQL3</span><span class="o">:</span> <span class="n">select</span> <span class="cm">/*+ first_rows_1 */</span> <span class="o">*</span> <span class="n">from</span> <span class="n">emp</span> <span class="n">where</span> <span class="n">emp_no</span> <span class="o">=</span> <span class="s1">&#39;1000&#39;</span><span class="o">;</span>
+<span class="n">SQL4</span><span class="o">:</span> <span class="n">select</span> <span class="cm">/*+ first_rows_10 */</span> <span class="o">*</span> <span class="n">from</span> <span class="n">emp</span> <span class="n">where</span> <span class="n">emp_no</span> <span class="o">=</span> <span class="s1">&#39;1000&#39;</span><span class="o">;</span>
+</pre></div>
+
+
+<p>共享同一个父游标，但分属不同子游标</p>
+<h2 id="life-cycle-of-a-cursor">Life Cycle of a Cursor</h2>
+<ul>
+<li>打开游标：私有SQL区域在UGA中被分配，用以打开游标，此时还没有sql语句</li>
+<li>解析游标：SQL语句与游标关联，并将执行计划加载到library cache中, 更新私有SQL区域，在私有SQL区域中存储共享SQL区域的指针</li>
+<li>定义输出变量：仅在有返回结果时</li>
+<li>绑定输入变量：如果sql语句存在绑定变量</li>
+<li>执行游标：sql语句被执行，在这个阶段，数据库引擎并不会做太多事情，对于很多查询，真正处理数据是在获取游标阶段</li>
+<li>获取游标：如果sql语句返回数据，这个步骤就是获取数据，尤其是查询语句，此阶段处理了大部分的事情</li>
+<li>关闭游标：释放UGA中私有sql区域的内存分配，共享sql区域并不会从SGA中移除，以备下次使用(软解析)</li>
+</ul>
+<h2 id="how-parsing-work">How Parsing work</h2>
+<ul>
+<li>包含VPD(Virtual Private Database,也叫行级安全控制)：如果使用了行级安全控制，安全策略生成的约束条件填加到where字句中</li>
+<li>语法、语义及权限的检查：检查SQL语句的正确性，对象的存在性及用户的访问权限</li>
+<li>在共享SQL区域存储父游标信息：如果父游标不存在，则需在library cache分配内存空间用于存储父游标信息</li>
+<li>在共享SQL区域存储子游标信息：分配内存空间，存储子游标，并与父游标关联</li>
+</ul>
+<p>一旦在library cache存储了父、子游标信息，就可以通过<code>v$sqlare</code>(父游标), <code>v$sql</code>(子游标)获取相关信息<br />
+如果父游标和子游标都在SGA中，以上步骤只需要执行前两步骤，称之为软解析</p>
+<h2 id="binding-peeking">Binding peeking</h2>
+<p>使用绑定变量，可以减少硬解析的。但是同时也有缺点。因为在使用绑定变量的时候，查询优化器会把一些关键信息隐藏，如直方图。在使用绑定变量的时候，优化器会忽略绑定变量的值，有可能做出错误的选择。<br />
+为了防止这种情况，从9i开始引进绑定变量窥视。在产生执行计划之前，优化器会窥视一个绑定变量的值，并将它具体化。但是这样也有个缺点这个具体值是基于第一次执行的情况的，因此还是会存在执行计划不准确的情况，于是ACS应运而生。</p>
+<h2 id="adaptive-cursor-sharing">Adaptive Cursor Sharing</h2>
+<p>从oracle 11g开始，ACS被引进用来解决绑定变量窥视所带来的弊端。ACS在遇到绑定变量的时候，会自动多次对绑定变量进行窥视，并对不同变量的值生成不同的子游标，以期获得准确的执行计划。在<code>v$sql</code>中，有三个栏位跟acs有关：</p>
+<ul>
+<li><code>is_bind_sensitive</code>: 不仅指明是否启用绑定变量同时也表明是否考虑ACS</li>
+<li><code>is_bind_aware</code>:   表面是否启用ACS</li>
+<li><code>is_shareable</code>: 表明游标是否可被共享</li>
+</ul>
+<h2 id="obtain-execution-plan">Obtain execution plan</h2>
+<h3 id="explain-plan-for">explain plan for</h3>
+<p>通常需要先创建一个<code>plan table</code>, 一般使用<code>@?/rdbms/admin/utlxplan.sql</code>去创建这个表, 示例：</p>
+<div class="hlcode"><pre><span class="n">SQL</span><span class="o">&gt;</span> <span class="err">@</span><span class="o">?/</span><span class="n">rdbms</span><span class="o">/</span><span class="n">admin</span><span class="o">/</span><span class="n">utlxplan</span><span class="p">.</span><span class="n">sql</span>
+<span class="n">SQL</span><span class="o">&gt;</span> <span class="n">explain</span> <span class="n">plan</span> <span class="k">for</span> <span class="n">select</span> <span class="n">last_name</span> <span class="n">from</span> <span class="n">cust</span> <span class="n">where</span> <span class="n">cust_id</span> <span class="o">=</span> <span class="err">&#39;</span><span class="mi">100</span><span class="err">&#39;</span><span class="p">;</span>
+<span class="n">SQL</span><span class="o">&gt;</span> <span class="n">select</span> <span class="o">*</span> <span class="n">from</span> <span class="n">table</span><span class="p">(</span><span class="n">dbms_xplan</span><span class="p">.</span><span class="n">display</span><span class="p">());</span>
+</pre></div>
+
+
+<p>在使用绑定变量的时候，不能显示的将一个具体值代入绑定变量中，需要将绑定变量一起explan：</p>
+<div class="hlcode"><pre><span class="n">explain</span> <span class="n">plan</span> <span class="k">for</span> <span class="n">select</span> <span class="o">*</span> <span class="n">from</span> <span class="n">emp</span> <span class="n">where</span> <span class="n">emp_no</span> <span class="o">&gt;=</span> <span class="o">:</span><span class="n">B</span><span class="p">;</span>
+</pre></div>
+
+
+<p>explain有几个弊端：</p>
+<ul>
+<li>explain中的绑定变量默认为varchar2类型，如果谓语中的type是其他类型，会导致隐式转换, 如以下带****的地方:</li>
+</ul>
+<div class="hlcode"><pre><span class="n">FUNG</span><span class="err">@</span><span class="n">linora</span> <span class="o">&gt;</span> <span class="n">explain</span> <span class="n">plan</span> <span class="k">for</span> <span class="n">select</span> <span class="n">first_name</span><span class="p">,</span> <span class="n">last_name</span> <span class="n">cust_id</span> <span class="n">from</span> <span class="n">cust</span> <span class="n">where</span> <span class="n">cust_id</span> <span class="o">&gt;=</span> <span class="o">:</span><span class="n">B</span><span class="p">;</span>
+
+<span class="n">Explained</span><span class="p">.</span>
+
+<span class="n">FUNG</span><span class="err">@</span><span class="n">linora</span> <span class="o">&gt;</span> <span class="n">select</span> <span class="o">*</span> <span class="n">from</span> <span class="n">table</span><span class="p">(</span><span class="n">dbms_xplan</span><span class="p">.</span><span class="n">display</span><span class="p">(</span><span class="err">&#39;</span><span class="sc">&#39;,&#39;&#39;,&#39;</span><span class="n">all</span><span class="err">&#39;</span><span class="p">));</span>
+
+<span class="n">PLAN_TABLE_OUTPUT</span>
+<span class="o">-----------------------------------------------</span>
+<span class="n">Plan</span> <span class="n">hash</span> <span class="n">value</span><span class="o">:</span> <span class="mi">4243541345</span>
+
+<span class="o">----------------------------------------------------------------------------</span>
+<span class="o">|</span> <span class="n">Id</span>  <span class="o">|</span> <span class="n">Operation</span>        <span class="o">|</span> <span class="n">Name</span>    <span class="o">|</span> <span class="n">Rows</span>  <span class="o">|</span> <span class="n">Bytes</span> <span class="o">|</span> <span class="n">Cost</span> <span class="p">(</span><span class="o">%</span><span class="n">CPU</span><span class="p">)</span><span class="o">|</span> <span class="n">Time</span>     <span class="o">|</span>
+<span class="o">----------------------------------------------------------------------------</span>
+<span class="o">|</span>   <span class="mi">0</span> <span class="o">|</span> <span class="n">SELECT</span> <span class="n">STATEMENT</span> <span class="o">|</span>         <span class="o">|</span>     <span class="mi">2</span> <span class="o">|</span>    <span class="mi">30</span> <span class="o">|</span>     <span class="mi">1</span>   <span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">|</span> <span class="mo">00</span><span class="o">:</span><span class="mo">00</span><span class="o">:</span><span class="mo">01</span> <span class="o">|</span>
+<span class="o">|*</span>  <span class="mi">1</span> <span class="o">|</span>  <span class="n">INDEX</span> <span class="n">RANGE</span> <span class="n">SCAN</span><span class="o">|</span> <span class="n">CUST_PK</span> <span class="o">|</span>     <span class="mi">2</span> <span class="o">|</span>    <span class="mi">30</span> <span class="o">|</span>     <span class="mi">1</span>   <span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">|</span> <span class="mo">00</span><span class="o">:</span><span class="mo">00</span><span class="o">:</span><span class="mo">01</span> <span class="o">|</span>
+<span class="o">----------------------------------------------------------------------------</span>
+
+<span class="n">Query</span> <span class="n">Block</span> <span class="n">Name</span> <span class="o">/</span> <span class="n">Object</span> <span class="n">Alias</span> <span class="p">(</span><span class="n">identified</span> <span class="n">by</span> <span class="n">operation</span> <span class="n">id</span><span class="p">)</span><span class="o">:</span>
+<span class="o">-------------------------------------------------------------</span>
+
+   <span class="mi">1</span> <span class="o">-</span> <span class="n">SEL</span><span class="err">$</span><span class="mi">1</span> <span class="o">/</span> <span class="n">CUST</span><span class="err">@</span><span class="n">SEL</span><span class="err">$</span><span class="mi">1</span>
+
+<span class="n">Predicate</span> <span class="n">Information</span> <span class="p">(</span><span class="n">identified</span> <span class="n">by</span> <span class="n">operation</span> <span class="n">id</span><span class="p">)</span><span class="o">:</span>
+<span class="o">---------------------------------------------------</span>
+
+<span class="o">****</span>   <span class="mi">1</span> <span class="o">-</span> <span class="n">access</span><span class="p">(</span><span class="s">&quot;CUST_ID&quot;</span><span class="o">&gt;=</span><span class="n">TO_NUMBER</span><span class="p">(</span><span class="o">:</span><span class="n">B</span><span class="p">))</span>
+
+<span class="n">Column</span> <span class="n">Projection</span> <span class="n">Information</span> <span class="p">(</span><span class="n">identified</span> <span class="n">by</span> <span class="n">operation</span> <span class="n">id</span><span class="p">)</span><span class="o">:</span>
+<span class="o">-----------------------------------------------------------</span>
+
+   <span class="mi">1</span> <span class="o">-</span> <span class="s">&quot;LAST_NAME&quot;</span><span class="p">[</span><span class="n">VARCHAR2</span><span class="p">,</span><span class="mi">30</span><span class="p">],</span> <span class="s">&quot;FIRST_NAME&quot;</span><span class="p">[</span><span class="n">VARCHAR2</span><span class="p">,</span><span class="mi">30</span><span class="p">]</span>
+</pre></div>
+
+
+<ul>
+<li>explain plan不会进行绑定变量窥视</li>
+</ul>
+<p><strong><em>explain plan只是对执行计划做一个预估，因为它并不会去真正执行sql，所以出来的结果有可能是不准确的(同set autot on stats)</em></strong></p>
+<h3 id="query-dynamic-performance-view">Query dynamic performance view</h3>
+<p>动态性能视图存储的是已经在library cache的游标信息。有如下几个关键视图：</p>
+<ul>
+<li>
+<p><code>v$sql_plan</code><br />
+提供了基本和plan table一样的信息.</p>
+</li>
+<li>
+<p><code>v$sql_plan_statistics</code><br />
+提供了执行的统计信息，例如在v$sql_plan中的每个操作的持续时间、处理的行数。</p>
+</li>
+<li>
+<p><code>v$sql_workarea</code><br />
+提供了需要执行一个游标的内存工作区域相关信息</p>
+</li>
+<li>
+<p><code>v$sql_plan_statistics_all</code><br />
+此视图集中了以上三个视图的功能</p>
+</li>
+</ul>
+<p>在实际应用中，都不会去直接查询这几个视图，而是通过<code>dbms_xplan.display_***</code>去查询:</p>
+<div class="hlcode"><pre><span class="n">SELECT</span> <span class="o">*</span> <span class="n">FROM</span> <span class="nf">table</span><span class="p">(</span><span class="n">dbms_xplan</span><span class="p">.</span><span class="n">display_cursor</span><span class="p">(</span><span class="err">&#39;</span><span class="mi">1</span><span class="n">hqjydsjbvmwq</span><span class="err">&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">));</span>
+</pre></div>
+
+
+<p><strong><em>从动态性能视图查询出来的执行计划是准确的，因为它是已经被执行过的sql。</em></strong></p>
+<h3 id="awrstatspack">AWR/Statspack</h3>
+<p>通过<code>dbms_xplan.display_awr</code>可以查看AWR里面的执行计划, 同时AWR还分别提供了可执行计划及资源消耗的对比脚本<code>awrsqrpt.sql</code> and <code>sprepsql.sql</code>。</p>
+<h3 id="trace-facility">Trace facility</h3>
+<ul>
+<li>10053</li>
+<li>10046</li>
+</ul>
+<h2 id="dbms_xplan"><code>dbms_xplan</code></h2>
+<h3 id="display_cursor"><code>display_cursor</code></h3>
+<p>format:<br />
+   * iostats:控制I/O统计的显示<br />
+   * memstats:控制PGA相关统计的显示<br />
+   * allstats:这是一个对于iostats,memstats的一个快捷方式<br />
+   * last:默认是所有执行的累积统计被显示如果这个值被指定只有最后的执行统计被显示<br />
+   * advanced:完全格式+outline<br />
+   * outline:以hint方式显示<br />
+   * peeked_binds:是否显示绑定变量窥视信息<br />
+   * buffstats:是否显示内存读次数，包括一致性读和当前读</p>
+<h3 id="display_awr"><code>display_awr</code></h3>
+<h2 id="execution-plan-output">Execution plan output</h2>
+<h2 id="how-to-read-execution-plan">How to read execution plan</h2>
+<p>阅读执行计划，可以通过ID将他们的关系以树形结构画出来, 如：</p>
+<div class="hlcode"><pre><span class="o">----------------------------------------------</span>
+<span class="o">|</span> <span class="n">Id</span>  <span class="o">|</span> <span class="n">Operation</span>                     <span class="o">|</span> <span class="n">Name</span> <span class="o">|</span>
+<span class="o">----------------------------------------------</span>
+<span class="o">|</span>   <span class="mi">0</span> <span class="o">|</span> <span class="n">UPDATE</span> <span class="n">STATEMENT</span>              <span class="o">|</span>      <span class="o">|</span>
+<span class="o">|</span>   <span class="mi">1</span> <span class="o">|</span>  <span class="n">UPDATE</span>                       <span class="o">|</span> <span class="n">T</span>    <span class="o">|</span>
+<span class="o">|</span>   <span class="mi">2</span> <span class="o">|</span>   <span class="n">NESTED</span> <span class="n">LOOPS</span>                <span class="o">|</span>      <span class="o">|</span>
+<span class="o">|</span>   <span class="mi">3</span> <span class="o">|</span>    <span class="n">TABLE</span> <span class="n">ACCESS</span> <span class="n">FULL</span>          <span class="o">|</span> <span class="n">T</span>    <span class="o">|</span>
+<span class="o">|</span>   <span class="mi">4</span> <span class="o">|</span>    <span class="n">INDEX</span> <span class="n">UNIQUE</span> <span class="n">SCAN</span>          <span class="o">|</span> <span class="n">T_PK</span> <span class="o">|</span>
+<span class="o">|</span>   <span class="mi">5</span> <span class="o">|</span>   <span class="n">SORT</span> <span class="n">AGGREGATE</span>              <span class="o">|</span>      <span class="o">|</span>
+<span class="o">|</span>   <span class="mi">6</span> <span class="o">|</span>    <span class="n">TABLE</span> <span class="n">ACCESS</span> <span class="n">BY</span> <span class="n">INDEX</span> <span class="n">ROWID</span><span class="o">|</span> <span class="n">T</span>    <span class="o">|</span>
+<span class="o">|</span>   <span class="mi">7</span> <span class="o">|</span>     <span class="n">INDEX</span> <span class="n">FULL</span> <span class="n">SCAN</span>           <span class="o">|</span> <span class="n">I</span>    <span class="o">|</span>
+<span class="o">|</span>   <span class="mi">8</span> <span class="o">|</span>   <span class="n">TABLE</span> <span class="n">ACCESS</span> <span class="n">BY</span> <span class="n">INDEX</span> <span class="n">ROWID</span> <span class="o">|</span> <span class="n">T</span>    <span class="o">|</span>
+<span class="o">|</span>   <span class="mi">9</span> <span class="o">|</span>    <span class="n">INDEX</span> <span class="n">UNIQUE</span> <span class="n">SCAN</span>          <span class="o">|</span> <span class="n">T_PK</span> <span class="o">|</span>
+<span class="o">----------------------------------------------</span>
+</pre></div>
+
+
+<p><img alt="execution tree" src="/attach/oracle/execution_tree.jpg" /></p>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-26 17:11:07</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>
