@@ -1,0 +1,93 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>RHEL 7 sudoer - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#linux">linux</a>
+    &nbsp;&#187;&nbsp;RHEL 7 sudoer
+    <span class="updated">Last Update: &nbsp;
+    2018-03-15 09:47:59
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <p>修改用户sudo权限一般可以用<code>visudo</code>，此命令相当于<code>vi /etc/sudoers</code>。<br />
+或者可以在<code>/etc/sudoers.d</code>目录下新建个文本，将sudo权限写入，在<code>/etc/sudoers</code>会有默认<code>#includedir /etc/sudoers.d</code>一行，这个并不是备注，同时<code>#</code>号后面也不能有空格。</p>
+<p>规范来讲，建议在/etc/sudoers.d下面新建个文件，而不是直接写入到/etc/sudoers去。<br />
+下列例子说明sudoer的用法：</p>
+<h3 id="_1">通过不同的别名对命令进行分类</h3>
+<div class="hlcode"><pre><span class="n">Cmnd_Alias</span> <span class="n">SYSTEM</span> <span class="o">=</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">su</span><span class="p">,</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">shutdown</span><span class="p">,</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">yum</span>
+<span class="n">Cmnd_Alias</span> <span class="n">MAINT</span> <span class="o">=</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">yum</span>
+<span class="n">Cmnd_Alias</span> <span class="n">NETWORKING</span> <span class="o">=</span> <span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">route</span><span class="p">,</span> <span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">ifconfig</span><span class="p">,</span> <span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">ping</span><span class="p">,</span> <span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">dhclient</span><span class="p">,</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">net</span><span class="p">,</span> <span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">iptables</span><span class="p">,</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">rfcomm</span><span class="p">,</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">wvdial</span><span class="p">,</span> <span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">iwconfig</span><span class="p">,</span> <span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">mii</span><span class="o">-</span><span class="n">tool</span>
+<span class="n">Cmnd_Alias</span> <span class="n">SOFTWARE</span> <span class="o">=</span> <span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">rpm</span><span class="p">,</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">up2date</span><span class="p">,</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">yum</span>
+<span class="n">Cmnd_Alias</span>      <span class="n">POWER</span> <span class="o">=</span> <span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">shutdown</span><span class="p">,</span> <span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">halt</span><span class="p">,</span> <span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">reboot</span><span class="p">,</span> <span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">restart</span>
+
+<span class="n">User_Alias</span>      <span class="n">GROUPONE</span> <span class="o">=</span> <span class="n">abby</span><span class="p">,</span> <span class="n">brent</span><span class="p">,</span> <span class="n">carl</span>
+<span class="n">User_Alias</span>      <span class="n">GROUPTWO</span> <span class="o">=</span> <span class="n">brent</span><span class="p">,</span> <span class="n">doris</span><span class="p">,</span> <span class="n">eric</span><span class="p">,</span>
+<span class="n">User_Alias</span>      <span class="n">GROUPTHREE</span> <span class="o">=</span> <span class="n">doris</span><span class="p">,</span> <span class="n">felicia</span><span class="p">,</span> <span class="n">grant</span>
+
+
+<span class="o">%</span><span class="n">netadmin</span> <span class="n">ALL</span> <span class="o">=</span> <span class="n">NETWORKING</span>  <span class="err">#</span> <span class="n">Example</span> <span class="mi">1</span>
+<span class="o">%</span><span class="n">wheel</span> <span class="n">ALL</span><span class="o">=</span><span class="p">(</span><span class="n">ALL</span><span class="p">)</span> <span class="n">ALL</span>          <span class="err">#</span> <span class="n">Example</span> <span class="mi">2</span>
+<span class="n">GROUPTWO</span>    <span class="n">ALL</span> <span class="o">=</span> <span class="n">SOFTWARE</span>    <span class="err">#</span> <span class="n">Example</span> <span class="mi">3</span>
+<span class="n">GROUPTHREE</span>  <span class="n">ALL</span> <span class="o">=</span> <span class="n">POWER</span>       <span class="err">#</span> <span class="n">Example</span> <span class="mi">4</span>
+</pre></div>
+
+
+<p>例1，将别名NETWORKING的命令组分配给netadmin的用户组，ALL表示对登陆主机不限制。<br />
+例2， 授权用户组wheel执行所有命令。括号里面的ALL表示能切换到任何用户。<br />
+例3， 授权用户组别名GROUPTWO的用户有执行SOFTWARE命令的权限。<br />
+例4， 授权用户组别名GROUPTHREE的用户有执行POWER命令的权限。</p>
+<div class="hlcode"><pre><span class="n">Runas_Alias</span>     <span class="n">WEB</span> <span class="o">=</span> <span class="n">www</span><span class="o">-</span><span class="n">data</span><span class="p">,</span> <span class="n">apache</span>
+<span class="n">GROUPONE</span>    <span class="n">ALL</span> <span class="o">=</span> <span class="p">(</span><span class="n">WEB</span><span class="p">)</span> <span class="n">NOPASSWD</span><span class="o">:</span> <span class="n">ALL</span>
+</pre></div>
+
+
+<p>上例中，将授权GROUPONE的用户有执行www-data, apache的权限, 且sudo的时候不需要输入密码, NOPASSWD只针对后面一个命令有效。</p>
+<div class="hlcode"><pre><span class="n">GROUPTWO</span>    <span class="n">ALL</span> <span class="o">=</span> <span class="n">NOPASSWD</span><span class="o">:</span> <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">updatedb</span><span class="p">,</span> <span class="n">PASSWD</span><span class="o">:</span> <span class="o">/</span><span class="n">bin</span><span class="o">/</span><span class="n">kill</span>
+</pre></div>
+
+
+<p>为了安全起见，可以分别对某些命令设置sudo密码，而其他的则不需要输入密码</p>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-03-15 10:45:50</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>
