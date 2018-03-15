@@ -1,0 +1,147 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>Extend file system on CentOS 7 - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#linux">linux</a>
+    &nbsp;&#187;&nbsp;Extend file system on CentOS 7
+    <span class="updated">Last Update: &nbsp;
+    2018-03-15 11:57:48
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <p>大部分的命令及方法都没变，唯一的区别是CentOS 7默认的file system变成了xfs，因此最后自动扩展文件系统的时候命令变成了<code>xfs_growfs</code>.</p>
+<h3 id="extend-pv">Extend PV</h3>
+<div class="hlcode"><pre><span class="p">[</span><span class="n">root</span><span class="err">@</span><span class="n">centos</span> <span class="n">worktmp</span><span class="p">]</span><span class="err">#</span> <span class="n">pvcreate</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sdb</span>
+</pre></div>
+
+
+<h3 id="extend-vg">Extend VG</h3>
+<div class="hlcode"><pre><span class="p">[</span><span class="n">root</span><span class="err">@</span><span class="n">centos</span> <span class="n">worktmp</span><span class="p">]</span><span class="err">#</span> <span class="n">vgdisplay</span> 
+  <span class="o">---</span> <span class="n">Volume</span> <span class="n">group</span> <span class="o">---</span>
+  <span class="n">VG</span> <span class="n">Name</span>               <span class="n">centos</span>
+  <span class="n">System</span> <span class="n">ID</span>             
+  <span class="n">Format</span>                <span class="n">lvm2</span>
+  <span class="n">Metadata</span> <span class="n">Areas</span>        <span class="mi">1</span>
+  <span class="n">Metadata</span> <span class="n">Sequence</span> <span class="n">No</span>  <span class="mi">3</span>
+  <span class="n">VG</span> <span class="n">Access</span>             <span class="n">read</span><span class="o">/</span><span class="n">write</span>
+  <span class="n">VG</span> <span class="n">Status</span>             <span class="n">resizable</span>
+  <span class="n">MAX</span> <span class="n">LV</span>                <span class="mi">0</span>
+  <span class="n">Cur</span> <span class="n">LV</span>                <span class="mi">2</span>
+  <span class="n">Open</span> <span class="n">LV</span>               <span class="mi">2</span>
+  <span class="n">Max</span> <span class="n">PV</span>                <span class="mi">0</span>
+  <span class="n">Cur</span> <span class="n">PV</span>                <span class="mi">1</span>
+  <span class="n">Act</span> <span class="n">PV</span>                <span class="mi">1</span>
+  <span class="n">VG</span> <span class="n">Size</span>               <span class="mf">14.70</span> <span class="n">GiB</span>
+  <span class="n">PE</span> <span class="n">Size</span>               <span class="mf">4.00</span> <span class="n">MiB</span>
+  <span class="n">Total</span> <span class="n">PE</span>              <span class="mi">3764</span>
+  <span class="n">Alloc</span> <span class="n">PE</span> <span class="o">/</span> <span class="n">Size</span>       <span class="mi">3764</span> <span class="o">/</span> <span class="mf">14.70</span> <span class="n">GiB</span>
+  <span class="n">Free</span>  <span class="n">PE</span> <span class="o">/</span> <span class="n">Size</span>       <span class="mi">0</span> <span class="o">/</span> <span class="mi">0</span>   
+  <span class="n">VG</span> <span class="n">UUID</span>               <span class="n">Nas46G</span><span class="o">-</span><span class="n">QvjO</span><span class="o">-</span><span class="n">t8O5</span><span class="o">-</span><span class="n">FG2n</span><span class="o">-</span><span class="n">OTGE</span><span class="o">-</span><span class="mi">08</span><span class="n">Pm</span><span class="o">-</span><span class="n">xBPD3n</span>
+
+<span class="p">[</span><span class="n">root</span><span class="err">@</span><span class="n">centos</span> <span class="n">worktmp</span><span class="p">]</span><span class="err">#</span> <span class="n">vgextend</span> <span class="n">centos</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">sdb</span>
+</pre></div>
+
+
+<h3 id="extend-lv">Extend LV</h3>
+<div class="hlcode"><pre><span class="p">[</span><span class="n">root</span><span class="err">@</span><span class="n">centos</span> <span class="n">worktmp</span><span class="p">]</span><span class="err">#</span> <span class="n">vgdisplay</span> 
+  <span class="o">---</span> <span class="n">Volume</span> <span class="n">group</span> <span class="o">---</span>
+  <span class="n">VG</span> <span class="n">Name</span>               <span class="n">centos</span>
+  <span class="n">System</span> <span class="n">ID</span>             
+  <span class="n">Format</span>                <span class="n">lvm2</span>
+  <span class="n">Metadata</span> <span class="n">Areas</span>        <span class="mi">2</span>
+  <span class="n">Metadata</span> <span class="n">Sequence</span> <span class="n">No</span>  <span class="mi">5</span>
+  <span class="n">VG</span> <span class="n">Access</span>             <span class="n">read</span><span class="o">/</span><span class="n">write</span>
+  <span class="n">VG</span> <span class="n">Status</span>             <span class="n">resizable</span>
+  <span class="n">MAX</span> <span class="n">LV</span>                <span class="mi">0</span>
+  <span class="n">Cur</span> <span class="n">LV</span>                <span class="mi">2</span>
+  <span class="n">Open</span> <span class="n">LV</span>               <span class="mi">2</span>
+  <span class="n">Max</span> <span class="n">PV</span>                <span class="mi">0</span>
+  <span class="n">Cur</span> <span class="n">PV</span>                <span class="mi">2</span>
+  <span class="n">Act</span> <span class="n">PV</span>                <span class="mi">2</span>
+  <span class="n">VG</span> <span class="n">Size</span>               <span class="o">&lt;</span><span class="mf">17.70</span> <span class="n">GiB</span>
+  <span class="n">PE</span> <span class="n">Size</span>               <span class="mf">4.00</span> <span class="n">MiB</span>
+  <span class="n">Total</span> <span class="n">PE</span>              <span class="mi">4531</span>
+  <span class="n">Alloc</span> <span class="n">PE</span> <span class="o">/</span> <span class="n">Size</span>       <span class="mi">4272</span> <span class="o">/</span> <span class="o">&lt;</span><span class="mf">16.69</span> <span class="n">GiB</span>
+  <span class="n">Free</span>  <span class="n">PE</span> <span class="o">/</span> <span class="n">Size</span>       <span class="mi">259</span> <span class="o">/</span> <span class="mf">1.01</span> <span class="n">GiB</span>
+  <span class="n">VG</span> <span class="n">UUID</span>               <span class="n">Nas46G</span><span class="o">-</span><span class="n">QvjO</span><span class="o">-</span><span class="n">t8O5</span><span class="o">-</span><span class="n">FG2n</span><span class="o">-</span><span class="n">OTGE</span><span class="o">-</span><span class="mi">08</span><span class="n">Pm</span><span class="o">-</span><span class="n">xBPD3n</span>
+
+
+<span class="p">[</span><span class="n">root</span><span class="err">@</span><span class="n">centos</span> <span class="n">worktmp</span><span class="p">]</span><span class="err">#</span> <span class="n">lvdisplay</span>
+  <span class="o">---</span> <span class="n">Logical</span> <span class="n">volume</span> <span class="o">---</span>
+  <span class="n">LV</span> <span class="n">Path</span>                <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">centos</span><span class="o">/</span><span class="n">root</span>
+  <span class="n">LV</span> <span class="n">Name</span>                <span class="n">root</span>
+  <span class="n">VG</span> <span class="n">Name</span>                <span class="n">centos</span>
+  <span class="n">LV</span> <span class="n">UUID</span>                <span class="n">ciOwqE</span><span class="o">-</span><span class="n">K2ME</span><span class="o">-</span><span class="n">dJvf</span><span class="o">-</span><span class="n">Tl82</span><span class="o">-</span><span class="mi">6</span><span class="n">y7B</span><span class="o">-</span><span class="n">UsGM</span><span class="o">-</span><span class="n">f4C07Q</span>
+  <span class="n">LV</span> <span class="n">Write</span> <span class="n">Access</span>        <span class="n">read</span><span class="o">/</span><span class="n">write</span>
+  <span class="n">LV</span> <span class="n">Creation</span> <span class="n">host</span><span class="p">,</span> <span class="n">time</span> <span class="n">localhost</span><span class="p">,</span> <span class="mi">2018</span><span class="o">-</span><span class="mo">03</span><span class="o">-</span><span class="mi">14</span> <span class="mi">16</span><span class="o">:</span><span class="mi">22</span><span class="o">:</span><span class="mi">22</span> <span class="o">+</span><span class="mi">0800</span>
+  <span class="n">LV</span> <span class="n">Status</span>              <span class="n">available</span>
+  <span class="err">#</span> <span class="n">open</span>                 <span class="mi">1</span>
+  <span class="n">LV</span> <span class="n">Size</span>                <span class="mf">12.70</span> <span class="n">GiB</span>
+  <span class="n">Current</span> <span class="n">LE</span>             <span class="mi">3252</span>
+  <span class="n">Segments</span>               <span class="mi">1</span>
+  <span class="n">Allocation</span>             <span class="n">inherit</span>
+  <span class="n">Read</span> <span class="n">ahead</span> <span class="n">sectors</span>     <span class="k">auto</span>
+  <span class="o">-</span> <span class="n">currently</span> <span class="n">set</span> <span class="n">to</span>     <span class="mi">8192</span>
+  <span class="n">Block</span> <span class="n">device</span>           <span class="mi">253</span><span class="o">:</span><span class="mi">0</span>
+
+<span class="p">[</span><span class="n">root</span><span class="err">@</span><span class="n">centos</span> <span class="n">worktmp</span><span class="p">]</span><span class="err">#</span> <span class="n">lvextend</span> <span class="o">-</span><span class="n">l</span> <span class="o">+</span><span class="mi">250</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">centos</span><span class="o">/</span><span class="n">root</span>
+</pre></div>
+
+
+<h3 id="enable-file-system-size">Enable file system size</h3>
+<div class="hlcode"><pre><span class="p">[</span><span class="n">root</span><span class="err">@</span><span class="n">centos</span> <span class="n">worktmp</span><span class="p">]</span><span class="err">#</span> <span class="n">xfs_growfs</span> <span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">mapper</span><span class="o">/</span><span class="n">centos</span><span class="o">-</span><span class="n">root</span> 
+<span class="n">meta</span><span class="o">-</span><span class="n">data</span><span class="o">=/</span><span class="n">dev</span><span class="o">/</span><span class="n">mapper</span><span class="o">/</span><span class="n">centos</span><span class="o">-</span><span class="n">root</span> <span class="n">isize</span><span class="o">=</span><span class="mi">512</span>    <span class="n">agcount</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">agsize</span><span class="o">=</span><span class="mi">832512</span> <span class="n">blks</span>
+         <span class="o">=</span>                       <span class="n">sectsz</span><span class="o">=</span><span class="mi">512</span>   <span class="n">attr</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">projid32bit</span><span class="o">=</span><span class="mi">1</span>
+         <span class="o">=</span>                       <span class="n">crc</span><span class="o">=</span><span class="mi">1</span>        <span class="n">finobt</span><span class="o">=</span><span class="mi">0</span> <span class="n">spinodes</span><span class="o">=</span><span class="mi">0</span>
+<span class="n">data</span>     <span class="o">=</span>                       <span class="n">bsize</span><span class="o">=</span><span class="mi">4096</span>   <span class="n">blocks</span><span class="o">=</span><span class="mi">3330048</span><span class="p">,</span> <span class="n">imaxpct</span><span class="o">=</span><span class="mi">25</span>
+         <span class="o">=</span>                       <span class="n">sunit</span><span class="o">=</span><span class="mi">0</span>      <span class="n">swidth</span><span class="o">=</span><span class="mi">0</span> <span class="n">blks</span>
+<span class="n">naming</span>   <span class="o">=</span><span class="n">version</span> <span class="mi">2</span>              <span class="n">bsize</span><span class="o">=</span><span class="mi">4096</span>   <span class="n">ascii</span><span class="o">-</span><span class="n">ci</span><span class="o">=</span><span class="mi">0</span> <span class="n">ftype</span><span class="o">=</span><span class="mi">1</span>
+<span class="n">log</span>      <span class="o">=</span><span class="n">internal</span>               <span class="n">bsize</span><span class="o">=</span><span class="mi">4096</span>   <span class="n">blocks</span><span class="o">=</span><span class="mi">2560</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="mi">2</span>
+         <span class="o">=</span>                       <span class="n">sectsz</span><span class="o">=</span><span class="mi">512</span>   <span class="n">sunit</span><span class="o">=</span><span class="mi">0</span> <span class="n">blks</span><span class="p">,</span> <span class="n">lazy</span><span class="o">-</span><span class="n">count</span><span class="o">=</span><span class="mi">1</span>
+<span class="n">realtime</span> <span class="o">=</span><span class="n">none</span>                   <span class="n">extsz</span><span class="o">=</span><span class="mi">4096</span>   <span class="n">blocks</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">rtextents</span><span class="o">=</span><span class="mi">0</span>
+<span class="n">data</span> <span class="n">blocks</span> <span class="n">changed</span> <span class="n">from</span> <span class="mi">3330048</span> <span class="n">to</span> <span class="mi">4106240</span>
+</pre></div>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-03-15 12:06:00</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>
