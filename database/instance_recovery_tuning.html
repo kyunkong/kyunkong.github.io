@@ -1,0 +1,86 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>Tuning instance recovery - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#database">database</a>
+    &nbsp;&#187;&nbsp;Tuning instance recovery
+    <span class="updated">Last Update: &nbsp;
+    2018-01-30 16:44:25
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#in-db2">In DB2</a></li>
+<li><a href="#in-oracle">In Oracle</a></li>
+</ul>
+</div>
+<h2 id="in-db2">In DB2</h2>
+<p>在尝试activate前，可尝试调小<code>DB2_OVERRIDE_BPF</code>：</p>
+<div class="hlcode"><pre><span class="n">db2set</span> <span class="n">DB2_OVERRIDE_BPF</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span><span class="mi">2000</span><span class="p">;</span><span class="mi">2</span><span class="p">,</span><span class="mi">1000</span> 
+</pre></div>
+
+
+<p>以上命令调整bufferpoll ID1 为2000pages，ID2 bufferpool为1000 pages</p>
+<h2 id="in-oracle">In Oracle</h2>
+<ul>
+<li><code>LOG_CHECKPOIN_INTERVAL</code><br />
+    调大会加快crash recovery速度，但会影响事务性能.<br />
+    指定redo log blocks在上一次incremental checkpoin和最后一次写到redo log的块数。这个块指的是OS的块，而不是数据库的块。如果这个值设置为0， switch log的时候一定会发生checkpoint。<br />
+    Limits the number of redo blocks generated between the most recent redo record and the checkpoint. </li>
+<li><code>LOG_CHECKPOINT_TIMEOUT</code><br />
+    Default 1800 sec, 这是在上一次进行incremental checkpoint后强制进行checkpoint的时间间隔<br />
+    Limits the number of seconds between the most recent redo record and the checkpoint.</li>
+<li>
+<p><code>FAST_START_MTTR_TARGET</code><br />
+    此参数会被<code>LOG_CHECKPOINT_INTERVAL</code>覆盖, 此参数控制cache recovery的时间<br />
+    Lets you specify in seconds the expected "mean time to recover" (MTTR), which is the expected amount of time Oracle takes to perform recovery and startup the instance. </p>
+</li>
+<li>
+<p><code>V$INSTANCE_RECOVERY</code><br />
+    此视图含有当前的参数配置，其中包括<code>TARGET_MTTR</code>和<code>ESTIMATED_MTTR</code></p>
+</li>
+</ul>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-31 17:22:28</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>

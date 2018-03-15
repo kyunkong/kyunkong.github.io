@@ -1,0 +1,108 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <link rel="Stylesheet" type="text/css" href="/static/css/colorful.css">
+    <link rel="Stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
+    <!-- <link rel="icon" href="/favicon.ico" type="image/x-icon"> -->
+    <link rel="alternate" type="application/atom+xml" href="atom.xml" title="Atom feed">
+    <title>Tuning HADR - Fung's wiki</title>
+    <!-- <meta name="keywords" content=""/> -->
+    <!-- <meta name="description" content=""/> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+  </head>
+
+  <body>
+    <div id="container" class="typo">
+      
+<div id="header">
+  <div id="post-nav">
+    <a href="/">Fung's wiki</a>
+    &nbsp;&#187;&nbsp;
+    <a href="/#db2">db2</a>
+    &nbsp;&#187;&nbsp;Tuning HADR
+    <span class="updated">Last Update: &nbsp;
+    2018-01-31 12:09:46
+    </span>
+  </div>
+</div>
+<div class="clearfix"></div>
+<div id="content">
+  <div class="toc"><span class="toctitle">Table of Contents</span><ul>
+<li><a href="#synchronization-mode">synchronization mode</a><ul>
+<li><a href="#sync">SYNC</a></li>
+<li><a href="#nearsyncdefault">NEARSYNC(default)</a></li>
+<li><a href="#async">ASYNC</a></li>
+<li><a href="#supersync">SUPERSYNC</a></li>
+</ul>
+</li>
+<li><a href="#hadr-related-edus">HADR related EDUs</a><ul>
+<li><a href="#on-primary">On primary</a></li>
+<li><a href="#on-standby">On standby</a></li>
+</ul>
+</li>
+<li><a href="#tools-for-debug-hadr">Tools for debug HADR</a></li>
+<li><a href="#tools-for-monitoring-hadr">Tools for monitoring HADR</a></li>
+<li><a href="#performance-tuning-for-hadr">Performance tuning for HADR</a></li>
+</ul>
+</div>
+<h2 id="synchronization-mode">synchronization mode</h2>
+<h3 id="sync">SYNC</h3>
+<p>主备节点是完全同步状态，主节点一个事务的完成必须等待日志传输到备节点，且备节点完成apply。</p>
+<h3 id="nearsyncdefault">NEARSYNC(default)</h3>
+<p>当主节点接收到备节点已经收到log buffer的信息就可以提交一个事务</p>
+<h3 id="async">ASYNC</h3>
+<p>主节点提交事务，同时发送log buffer到备节点，主节点并不需要等待备节点接收到log buffer</p>
+<h3 id="supersync">SUPERSYNC</h3>
+<p>事务日志的写入和传输完全是独立的，在此模式下，永远都不会存在peer模式，一直都是remote catchup状态</p>
+<h2 id="hadr-related-edus">HADR related EDUs</h2>
+<h3 id="on-primary">On primary</h3>
+<ul>
+<li>db2hadrp<br />
+    HADR主线程，职责为log shipping及接收standby的确认信息</li>
+<li>db2loggw<br />
+    Log writer</li>
+<li>db2lfr<br />
+    在supersync模式下读取日志文件的线程</li>
+</ul>
+<h3 id="on-standby">On standby</h3>
+<ul>
+<li>db2hadrs<br />
+    HADR在standby上的主线程，负责接收日志和发送确认信息，同时将redo record写入standby日志</li>
+<li>db2shred<br />
+    从db2hadrs接收到log buffer，db2shred会将这些log buffer分成单独的redo record以应用到表空间</li>
+<li>db2redom<br />
+    Redo Master， 从db2shred接收redo record并管理这些log record</li>
+<li>db2redow<br />
+    Redo Worker, 这进程由db2redom指派，重演log record到表空间</li>
+<li>db2lfr<br />
+    log file reader, 有时候需要从日志文件中读取旧的日志记录，并分发这些记录到db2shred</li>
+</ul>
+<h2 id="tools-for-debug-hadr">Tools for debug HADR</h2>
+<h2 id="tools-for-monitoring-hadr">Tools for monitoring HADR</h2>
+<h2 id="performance-tuning-for-hadr">Performance tuning for HADR</h2>
+  
+</div>
+    </div>
+    <div id="footer">
+      <!-- <div class="footer-left"> -->
+      <!-- <div class="footer-center"> -->
+        <center>
+        <p>
+        Copyright © 2012-2018 Fung Kong.
+        Powered by <a href="http://simiki.org/" target="_blank">Simiki</a>.
+        Theme by <a href="https://github.com/tankywoo/yasimple_x2" target="_blank">YASimple_X2</a>.
+        </p>
+        </center>
+      <!-- </div> [> end footer-left <] -->
+      <!-- <div class="footer-right"> -->
+        <!-- <p>站点最后生成 2018-01-31 17:22:28</p> -->
+      <!-- </div> [> end footer-right <] -->
+    </div>
+
+    
+    
+
+  </body>
+</html>
