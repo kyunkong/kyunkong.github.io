@@ -1,3 +1,8 @@
 *.pyc
 output
 git.sh
+.bundle
+.DS_Store
+.sass-cache
+.gist-cache
+.pygments-cache
